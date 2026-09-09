@@ -236,9 +236,9 @@ with tab_informes:
                 st.markdown("---")
 
                 # ---------------------------------------------------------
-                # 2. RENDIMIENTO EN SALTO
+                # 2. RENDIMIENTO EN SALTO Y VECTORES DE FUERZA
                 # ---------------------------------------------------------
-                st.markdown("#### 🦘 2. Rendimiento en Salto")
+                st.markdown("#### 🦘 2. Rendimiento en Salto y Vectores")
                 
                 cs1, cs2, cs3, cs4, cs5 = st.columns(5)
                 with cs1: kpi_compacto("Salto Vertical Bilateral", f"{v_data.get('cmj_bilateral', 0)} cm")
@@ -247,15 +247,30 @@ with tab_informes:
                 with cs4: kpi_compacto("Salto Horizontal (D)", f"{v_data.get('salto_horiz_der', 0)} cm")
                 with cs5: kpi_compacto("Salto Horizontal (I)", f"{v_data.get('salto_horiz_izq', 0)} cm")
                 
+                # Cálculos de Salto
                 asi_cmj = calcular_asimetria(v_data.get('cmj_uni_der', 0), v_data.get('cmj_uni_izq', 0))
-                
                 cmj_bi = float(v_data.get('cmj_bilateral', 0))
                 cmj_uni_sum = float(v_data.get('cmj_uni_der', 0)) + float(v_data.get('cmj_uni_izq', 0))
                 dbl = round(100 * (cmj_bi / cmj_uni_sum) - 100, 1) if cmj_uni_sum > 0 else 0
                 
-                ca1, ca2 = st.columns(2)
-                ca1.info(f"**Asimetría Salto Vertical Unilateral:** {badge_asi(asi_cmj)}")
-                ca2.info(f"**Déficit Bilateral (DBL):** {dbl}% (Valores negativos indican mayor eficiencia saltando a una pierna)")
+                # Ratio de Vectores (Horizontal vs Vertical)
+                sh_promedio = (float(v_data.get('salto_horiz_der', 0)) + float(v_data.get('salto_horiz_izq', 0))) / 2
+                cmj_uni_promedio = cmj_uni_sum / 2
+                ratio_vectores = round(sh_promedio / cmj_uni_promedio, 2) if cmj_uni_promedio > 0 else 0
+                
+                if ratio_vectores > 4.5:
+                    perfil_vector = "🏃 Dominancia Horizontal (Perfil Acelerador - 1ºs metros)"
+                elif ratio_vectores > 0 and ratio_vectores < 3.5:
+                    perfil_vector = "🚀 Dominancia Vertical (Perfil Aéreo y Velocidad Punta)"
+                elif ratio_vectores >= 3.5 and ratio_vectores <= 4.5:
+                    perfil_vector = "⚖️ Perfil Vectorial Equilibrado"
+                else:
+                    perfil_vector = "Datos insuficientes"
+                
+                ca1, ca2, ca3 = st.columns(3)
+                ca1.info(f"**Asimetría Vertical (Unilateral):** {badge_asi(asi_cmj)}")
+                ca2.info(f"**Déficit Bilateral (DBL):** {dbl}% (Negativo = eficiencia a 1 pierna)")
+                ca3.info(f"**Teoría de Vectores (Ratio H/V):** {ratio_vectores}\n\n{perfil_vector}")
 
                 st.markdown("---")
 
@@ -300,17 +315,32 @@ with tab_informes:
                 st.markdown("---")
 
                 # ---------------------------------------------------------
-                # 4. FUERZA MÁXIMA
+                # 4. FUERZA MÁXIMA, PERFIL F-V Y DSI
                 # ---------------------------------------------------------
-                st.markdown("#### 🏋️‍♂️ 4. Fuerza Máxima y Perfil F-V")
+                st.markdown("#### 🏋️‍♂️ 4. Fuerza Máxima, Perfil F-V y DSI")
                 sq_rm = safe_float(v_data.get('rm_sentadilla'))
                 dl_rm = safe_float(v_data.get('rm_peso_muerto'))
+                f_rel_sq = round(sq_rm / peso_actual, 2) if peso_actual > 0 else 0
+                f_rel_dl = round(dl_rm / peso_actual, 2) if peso_actual > 0 else 0
                 
                 crm1, crm2, crm3, crm4 = st.columns(4)
                 with crm1: kpi_compacto("Estimación 1RM Sentadilla", f"{sq_rm} kg")
                 with crm2: kpi_compacto("Estimación 1RM Peso Muerto", f"{dl_rm} kg")
-                with crm3: kpi_compacto("Fuerza Relativa Sentadilla", f"{round(sq_rm / peso_actual, 2)}x Peso Corporal")
-                with crm4: kpi_compacto("Fuerza Relativa Peso Muerto", f"{round(dl_rm / peso_actual, 2)}x Peso Corporal")
+                with crm3: kpi_compacto("Fuerza Relativa Sentadilla", f"{f_rel_sq}x Peso Corporal")
+                with crm4: kpi_compacto("Fuerza Relativa Peso Muerto", f"{f_rel_dl}x Peso Corporal")
+                
+                # DSI Adaptado (Transferencia Fuerza-Potencia)
+                dsi_adaptado = round(cmj_bi / f_rel_sq, 1) if f_rel_sq > 0 else 0
+                if dsi_adaptado > 25:
+                    diag_dsi = "🔴 Déficit de Fuerza (Alto CMJ, base débil. Priorizar Sentadilla pesada)"
+                elif dsi_adaptado > 0 and dsi_adaptado < 18:
+                    diag_dsi = "🟡 Déficit de Potencia (Fuerte pero lento. Priorizar Pliometría/Balísticos)"
+                elif dsi_adaptado >= 18 and dsi_adaptado <= 25:
+                    diag_dsi = "🟢 Transferencia Óptima (Equilibrio Fuerza-Potencia)"
+                else:
+                    diag_dsi = "Datos insuficientes"
+                    
+                st.info(f"**Índice de Fuerza Dinámica Adaptado (DSI):** {dsi_adaptado}\n\n*Diagnóstico:* {diag_dsi}")
                 
                 # --- GRÁFICOS DE PERFIL FUERZA-VELOCIDAD Y CUADRANTE ---
                 def analizar_perfil_fv(datos_json, titulo, peso_corp):
