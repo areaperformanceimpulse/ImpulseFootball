@@ -19,14 +19,19 @@ def fetch_datos_academia():
 
 def cargar_datos_sistema():
     try:
-        jugadores, valoraciones = fetch_datos_academia()
-        st.session_state.jugadores = jugadores if jugadores else []
-        st.session_state.valoraciones = valoraciones if valoraciones else []
+        # Cargar la tabla de jugadores desde Supabase
+        res_jugadores = supabase.table("jugadores").select("*").execute()
+        st.session_state.jugadores = res_jugadores.data if res_jugadores.data else []
+        
+        # Cargar la tabla de valoraciones desde Supabase
+        res_vals = supabase.table("valoraciones_condicionales").select("*").execute()
+        st.session_state.valoraciones = res_vals.data if res_vals.data else []
+        
         st.session_state.datos_cargados = True
-        return True
     except Exception as e:
-        st.error(f"Error al conectar con Supabase: {e}")
-        return False
+        st.error(f"Error al cargar los datos del sistema: {e}")
+        st.session_state.jugadores = []
+        st.session_state.valoraciones = []
 
 def guardar_datos_supabase(tabla, datos):
     try:
