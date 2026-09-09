@@ -75,25 +75,29 @@ with tab_nuevo:
 
             st.markdown("---")
             
-            # --- ⚡ 3. ISOMETRÍA (4 Bloques, Der/Izq en vertical dentro de cada bloque) ---
+            # --- ⚡ 3. ISOMETRÍA (4 Bloques, Der/Izq en horizontal) ---
             st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica (N)")
             ci1, ci2, ci3, ci4 = st.columns(4)
             with ci1:
                 st.markdown("**Extensión (Cuád)**")
-                iso_ext_d = st.number_input("Der (N)", min_value=0.0, value=0.0, step=1.0, key="ext_d")
-                iso_ext_i = st.number_input("Izq (N)", min_value=0.0, value=0.0, step=1.0, key="ext_i")
+                c_ed, c_ei = st.columns(2)
+                with c_ed: iso_ext_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="ext_d")
+                with c_ei: iso_ext_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="ext_i")
             with ci2:
                 st.markdown("**Flexión (Isq)**")
-                iso_flx_d = st.number_input("Der (N)", min_value=0.0, value=0.0, step=1.0, key="flx_d")
-                iso_flx_i = st.number_input("Izq (N)", min_value=0.0, value=0.0, step=1.0, key="flx_i")
+                c_fd, c_fi = st.columns(2)
+                with c_fd: iso_flx_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="flx_d")
+                with c_fi: iso_flx_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="flx_i")
             with ci3:
                 st.markdown("**Aducción**")
-                iso_add_d = st.number_input("Der (N)", min_value=0.0, value=0.0, step=1.0, key="add_d")
-                iso_add_i = st.number_input("Izq (N)", min_value=0.0, value=0.0, step=1.0, key="add_i")
+                c_ad, c_ai = st.columns(2)
+                with c_ad: iso_add_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="add_d")
+                with c_ai: iso_add_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="add_i")
             with ci4:
                 st.markdown("**Abducción**")
-                iso_abd_d = st.number_input("Der (N)", min_value=0.0, value=0.0, step=1.0, key="abd_d")
-                iso_abd_i = st.number_input("Izq (N)", min_value=0.0, value=0.0, step=1.0, key="abd_i")
+                c_abd, c_abi = st.columns(2)
+                with c_abd: iso_abd_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="abd_d")
+                with c_abi: iso_abd_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="abd_i")
 
             st.markdown("---")
             
