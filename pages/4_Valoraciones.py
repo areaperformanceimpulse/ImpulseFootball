@@ -12,7 +12,6 @@ if not st.session_state.get("autenticado", False):
     st.warning("Sesión caducada.")
     st.stop()
 
-# Asegurar datos frescos
 cargar_datos_sistema()
 
 st.title("📊 Valoraciones Condicionales (Gimnasio)")
@@ -24,7 +23,7 @@ valoraciones = st.session_state.get("valoraciones", [])
 mapa_jugadores = {j['id']: j['nombre'] for j in jugadores}
 
 # ==========================================
-# PESTAÑA 1: AÑADIR NUEVA VALORACIÓN (COMPRIMIDA)
+# PESTAÑA 1: AÑADIR NUEVA VALORACIÓN
 # ==========================================
 with tab_nuevo:
     if not jugadores:
@@ -32,76 +31,77 @@ with tab_nuevo:
     else:
         with st.form("form_nueva_val_detallada"):
             
-            # --- ⚙️ DATOS GENERALES (5 Variables en 1 fila) ---
+            # --- ⚙️ DATOS GENERALES ---
             st.markdown("#### ⚙️ Datos Generales")
-            cg1, cg2, cg3, cg4, cg5 = st.columns(5)
+            cg1, cg2, cg3, cg4, cg5, cg6 = st.columns(6)
             with cg1: jugador_sel = st.selectbox("Deportista:", options=list(mapa_jugadores.keys()), format_func=lambda x: mapa_jugadores[x])
             with cg2: 
                 anos = [f"{str(y)[-2:]}/{str(y+1)[-2:]}" for y in range(2024, 2030)]
                 temporada = st.selectbox("Temporada:", options=anos, index=1)
-            with cg3: num_val = st.number_input("N.º de Valoración:", min_value=1, max_value=10, value=1, step=1)
+            with cg3: num_val = st.number_input("Nº Val:", min_value=1, max_value=10, value=1, step=1)
             with cg4: lesion = st.radio("¿Lesión activa?", options=["No", "Sí"], horizontal=True, index=0)
             with cg5: fecha_test = st.date_input("Fecha:", value=date.today())
+            with cg6: peso = st.number_input("Peso (kg):", min_value=30.0, value=70.0, step=0.5)
             
             st.markdown("---")
             
-            # --- 🤸 1. FMS (Fila 1: 5 variables | Fila 2: 6 variables) ---
+            # --- 🤸 1. FMS ---
             st.markdown("#### 🤸 1. Protocolo FMS (0 a 3)")
             cf1, cf2, cf3, cf4, cf5 = st.columns(5)
-            with cf1: fms_sentadilla = st.number_input("FMS1: Sentadilla profunda", 0, 3, 3)
-            with cf2: fms_obstaculo_d = st.number_input("FMS2: Paso de Obstáculo (D).", 0, 3, 3)
-            with cf3: fms_obstaculo_i = st.number_input("FMS2: Paso de Obstáculo (I).", 0, 3, 3)
-            with cf4: fms_zancada_d = st.number_input("FMS3: Zancada (D).", 0, 3, 3)
-            with cf5: fms_zancada_i = st.number_input("FMS3: Zancada (I).", 0, 3, 3)
+            with cf1: fms_sentadilla = st.number_input("Sentadilla", 0, 3, 3)
+            with cf2: fms_obstaculo_d = st.number_input("Obstáculo Der.", 0, 3, 3)
+            with cf3: fms_obstaculo_i = st.number_input("Obstáculo Izq.", 0, 3, 3)
+            with cf4: fms_zancada_d = st.number_input("Zancada Der.", 0, 3, 3)
+            with cf5: fms_zancada_i = st.number_input("Zancada Izq.", 0, 3, 3)
             
             cf6, cf7, cf8, cf9, cf10, cf11 = st.columns(6)
-            with cf6: fms_hombro_d = st.number_input("FMS4: Movilidad de Hombro (D).", 0, 3, 3)
-            with cf7: fms_hombro_i = st.number_input("FMS4: Movilidad de Hombro (I)", 0, 3, 3)
-            with cf8: fms_pierna_d = st.number_input("FMS5: Elevación de pierna (D)", 0, 3, 3)
-            with cf9: fms_pierna_i = st.number_input("FMS5: Elevación de pierna (I)", 0, 3, 3)
-            with cf10: fms_tronco = st.number_input("FMS6: Estabilidad de Tronco", 0, 3, 3)
-            with cf11: fms_rotatoria = st.number_input("FMS7: Estabilidad Rotatoria", 0, 3, 3)
+            with cf6: fms_hombro_d = st.number_input("Hombro Der.", 0, 3, 3)
+            with cf7: fms_hombro_i = st.number_input("Hombro Izq.", 0, 3, 3)
+            with cf8: fms_pierna_d = st.number_input("P. Recta Der.", 0, 3, 3)
+            with cf9: fms_pierna_i = st.number_input("P. Recta Izq.", 0, 3, 3)
+            with cf10: fms_tronco = st.number_input("Est. Tronco", 0, 3, 3)
+            with cf11: fms_rotatoria = st.number_input("Est. Rotatoria", 0, 3, 3)
 
             st.markdown("---")
             
-            # --- 🦘 2. SALTO (5 Variables en 1 fila) ---
+            # --- 🦘 2. SALTO ---
             st.markdown("#### 🦘 2. Test de Salto (cm)")
             cs1, cs2, cs3, cs4, cs5 = st.columns(5)
             with cs1: cmj_bi = st.number_input("CMJ Bilateral", min_value=0.0, value=0.0, step=0.5)
-            with cs2: cmj_ud = st.number_input("CMJ Unilateral (D)", min_value=0.0, value=0.0, step=0.5)
-            with cs3: cmj_ui = st.number_input("CMJ Unilateral (I)", min_value=0.0, value=0.0, step=0.5)
-            with cs4: sh_d = st.number_input("Salto horizontal (D).", min_value=0.0, value=0.0, step=1.0)
-            with cs5: sh_i = st.number_input("Salto horizontal (I)", min_value=0.0, value=0.0, step=1.0)
+            with cs2: cmj_ud = st.number_input("CMJ Uni. Der.", min_value=0.0, value=0.0, step=0.5)
+            with cs3: cmj_ui = st.number_input("CMJ Uni. Izq.", min_value=0.0, value=0.0, step=0.5)
+            with cs4: sh_d = st.number_input("Horiz. Der.", min_value=0.0, value=0.0, step=1.0)
+            with cs5: sh_i = st.number_input("Horiz. Izq.", min_value=0.0, value=0.0, step=1.0)
 
             st.markdown("---")
             
-            # --- ⚡ 3. ISOMETRÍA (4 Bloques, Der/Izq en horizontal) ---
+            # --- ⚡ 3. ISOMETRÍA ---
             st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica (N)")
             ci1, ci2, ci3, ci4 = st.columns(4)
             with ci1:
-                st.markdown("**Extensión de Rodilla**")
+                st.markdown("**Extensión (Cuád)**")
                 c_ed, c_ei = st.columns(2)
-                with c_ed: iso_ext_d = st.number_input("Derecha", min_value=0.0, value=0.0, step=1.0, key="ext_d")
-                with c_ei: iso_ext_i = st.number_input("Izquierda", min_value=0.0, value=0.0, step=1.0, key="ext_i")
+                with c_ed: iso_ext_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="ext_d")
+                with c_ei: iso_ext_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="ext_i")
             with ci2:
-                st.markdown("**Flexión de Rodilla**")
+                st.markdown("**Flexión (Isq)**")
                 c_fd, c_fi = st.columns(2)
-                with c_fd: iso_flx_d = st.number_input("Derecha", min_value=0.0, value=0.0, step=1.0, key="flx_d")
-                with c_fi: iso_flx_i = st.number_input("Izquierda", min_value=0.0, value=0.0, step=1.0, key="flx_i")
+                with c_fd: iso_flx_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="flx_d")
+                with c_fi: iso_flx_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="flx_i")
             with ci3:
-                st.markdown("**Aducción de Cadera**")
+                st.markdown("**Aducción**")
                 c_ad, c_ai = st.columns(2)
-                with c_ad: iso_add_d = st.number_input("Derecha", min_value=0.0, value=0.0, step=1.0, key="add_d")
-                with c_ai: iso_add_i = st.number_input("Izquierda", min_value=0.0, value=0.0, step=1.0, key="add_i")
+                with c_ad: iso_add_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="add_d")
+                with c_ai: iso_add_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="add_i")
             with ci4:
-                st.markdown("**Abducción de Cadera**")
+                st.markdown("**Abducción**")
                 c_abd, c_abi = st.columns(2)
-                with c_abd: iso_abd_d = st.number_input("Derecha", min_value=0.0, value=0.0, step=1.0, key="abd_d")
-                with c_abi: iso_abd_i = st.number_input("Izquierda", min_value=0.0, value=0.0, step=1.0, key="abd_i")
+                with c_abd: iso_abd_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="abd_d")
+                with c_abi: iso_abd_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="abd_i")
 
             st.markdown("---")
             
-            # --- 🏋️‍♂️ 4. 1RM (10 Columnas para SQ, 10 Columnas para PM debajo) ---
+            # --- 🏋️‍♂️ 4. 1RM ---
             st.markdown("#### 🏋️‍♂️ 4. Estimación 1RM (Carga y Velocidad)")
             
             st.markdown("**Sentadilla**")
@@ -118,7 +118,6 @@ with tab_nuevo:
                 with c_pm[s*2]: p_pm.append(st.number_input(f"S{s+1}(kg)", min_value=0.0, step=2.5, key=f"pm_p_{s}"))
                 with c_pm[s*2+1]: v_pm.append(st.number_input(f"S{s+1}(m/s)", min_value=0.0, step=0.01, key=f"pm_v_{s}"))
 
-            # Cálculo interno
             def calcular_rm_final(pesos, vels):
                 validas = [(pesos[i], vels[i]) for i in range(5) if vels[i] > 0 and pesos[i] > 0]
                 if validas:
@@ -136,7 +135,7 @@ with tab_nuevo:
                 try:
                     nuevo_test = {
                         "jugador_id": jugador_sel, "fecha": str(fecha_test), "temporada": temporada,
-                        "numero_valoracion": int(num_val), "lesion": lesion,
+                        "numero_valoracion": int(num_val), "lesion": lesion, "peso_corporal": float(peso),
                         "fms_sentadilla": fms_sentadilla,
                         "fms_paso_obstaculo_der": fms_obstaculo_d, "fms_paso_obstaculo_izq": fms_obstaculo_i,
                         "fms_zancada_der": fms_zancada_d, "fms_zancada_izq": fms_zancada_i,
@@ -187,12 +186,11 @@ with tab_informes:
                 with cf3: val_sel_id = st.selectbox("Número de Valoración:", options=list(dicc_vals.keys()), format_func=lambda x: dicc_vals[x])
                 
                 v_data = df_temp[df_temp['id'] == val_sel_id].iloc[0]
+                peso_actual = v_data.get('peso_corporal', 70.0) # Valor por defecto si falta
                 
-                # Función para inyectar KPIs comprimidos con letra reducida
                 def kpi_compacto(titulo, valor):
                     st.markdown(f"<div style='line-height: 1.2; margin-bottom: 12px;'><span style='font-size: 0.80em; color: #64748b; font-weight: 600;'>{titulo}</span><br><span style='font-size: 1.2em; font-weight: 800;'>{valor}</span></div>", unsafe_allow_html=True)
 
-                # Semáforos
                 def badge_asi(val):
                     if val < 10: return f"🟢 {val}% (Óptimo)"
                     elif val <= 15: return f"🟡 {val}% (Precaución)"
@@ -223,6 +221,14 @@ with tab_informes:
                 with cm10: kpi_compacto("FMS 6: Estabilidad Tronco", v_data.get('fms_estabilidad_tronco', 0))
                 with cm11: kpi_compacto("FMS 7: Estabilidad Rotatoria", v_data.get('fms_estabilidad_rotatoria', 0))
 
+                # Clústeres FMS
+                mov_total = sum([v_data.get('fms_mov_hombro_der',0), v_data.get('fms_mov_hombro_izq',0), v_data.get('fms_elevacion_pierna_der',0), v_data.get('fms_elevacion_pierna_izq',0)])
+                ctrl_total = sum([v_data.get('fms_sentadilla',0), v_data.get('fms_estabilidad_tronco',0), v_data.get('fms_estabilidad_rotatoria',0), v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0), v_data.get('fms_zancada_der',0), v_data.get('fms_zancada_izq',0)])
+                
+                c_fms1, c_fms2 = st.columns(2)
+                c_fms1.info(f"**Clúster Movilidad:** {mov_total} / 12 pts (Valora la flexibilidad y longitud del tejido)")
+                c_fms2.info(f"**Clúster Control Motor:** {ctrl_total} / 21 pts (Valora la estabilización activa de las articulaciones)")
+
                 st.markdown("---")
 
                 # ---------------------------------------------------------
@@ -238,11 +244,15 @@ with tab_informes:
                 with cs5: kpi_compacto("Salto Horizontal (I)", f"{v_data.get('salto_horiz_izq', 0)} cm")
                 
                 asi_cmj = calcular_asimetria(v_data.get('cmj_uni_der', 0), v_data.get('cmj_uni_izq', 0))
-                asi_sh = calcular_asimetria(v_data.get('salto_horiz_der', 0), v_data.get('salto_horiz_izq', 0))
+                
+                # Déficit Bilateral
+                cmj_bi = float(v_data.get('cmj_bilateral', 0))
+                cmj_uni_sum = float(v_data.get('cmj_uni_der', 0)) + float(v_data.get('cmj_uni_izq', 0))
+                dbl = round(100 * (cmj_bi / cmj_uni_sum) - 100, 1) if cmj_uni_sum > 0 else 0
                 
                 ca1, ca2 = st.columns(2)
                 ca1.info(f"**Asimetría Salto Vertical Unilateral:** {badge_asi(asi_cmj)}")
-                ca2.info(f"**Asimetría Salto Horizontal:** {badge_asi(asi_sh)}")
+                ca2.info(f"**Déficit Bilateral (DBL):** {dbl}% (Valores negativos indican mayor eficiencia saltando a una pierna)")
 
                 st.markdown("---")
 
@@ -293,9 +303,11 @@ with tab_informes:
                 sq_rm = v_data.get('rm_sentadilla', 0.0)
                 dl_rm = v_data.get('rm_peso_muerto', 0.0)
                 
-                crm1, crm2 = st.columns(2)
+                crm1, crm2, crm3, crm4 = st.columns(4)
                 with crm1: kpi_compacto("Estimación 1RM Sentadilla", f"{sq_rm} kg")
                 with crm2: kpi_compacto("Estimación 1RM Peso Muerto", f"{dl_rm} kg")
+                with crm3: kpi_compacto("Fuerza Relativa Sentadilla", f"{round(sq_rm / peso_actual, 2) if peso_actual > 0 else 0}x Peso Corporal")
+                with crm4: kpi_compacto("Fuerza Relativa Peso Muerto", f"{round(dl_rm / peso_actual, 2) if peso_actual > 0 else 0}x Peso Corporal")
                 
                 if sq_rm > 0 or dl_rm > 0:
                     cz1, cz2 = st.columns(2)
@@ -336,7 +348,7 @@ with tab_reg:
         df_vals_completos['Deportista'] = df_vals_completos['jugador_id'].map(mapa_jugadores)
         
         renombres = {
-            'fecha': 'Fecha', 'temporada': 'Temporada', 'numero_valoracion': 'Nº Val.', 'Deportista': 'Deportista', 'lesion': 'Lesión',
+            'fecha': 'Fecha', 'temporada': 'Temporada', 'numero_valoracion': 'Nº Val.', 'Deportista': 'Deportista', 'lesion': 'Lesión', 'peso_corporal': 'Peso (kg)',
             'fms_sentadilla': 'FMS Sentadilla', 
             'fms_paso_obstaculo_der': 'FMS Paso Obst. (Der)', 'fms_paso_obstaculo_izq': 'FMS Paso Obst. (Izq)',
             'fms_zancada_der': 'FMS Zancada (Der)', 'fms_zancada_izq': 'FMS Zancada (Izq)', 
@@ -352,7 +364,7 @@ with tab_reg:
             'rm_sentadilla': '1RM Sentadilla (kg)', 'rm_peso_muerto': '1RM Peso Muerto (kg)', 'comentarios': 'Comentarios'
         }
         
-        cols_base = ['Deportista', 'Fecha', 'Temporada', 'Nº Val.', 'Lesión']
+        cols_base = ['Deportista', 'Fecha', 'Temporada', 'Nº Val.', 'Lesión', 'Peso (kg)']
         df_vals_completos = df_vals_completos.rename(columns=renombres)
         cols_existentes = [c for c in df_vals_completos.columns if c in renombres.values()]
         resto_cols = [c for c in cols_existentes if c not in cols_base]
