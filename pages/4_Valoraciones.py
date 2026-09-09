@@ -61,34 +61,33 @@ with tab_nuevo:
             st.markdown("---")
             
             # ==========================================
-            # 1. MOVILIDAD (FMS): 7 PRUEBAS (BILATERALES Y UNILATERALES)
+            # 1. MOVILIDAD (FMS): 7 PRUEBAS (CON BOTONES NUMÉRICOS + Y -)
             # ==========================================
             st.markdown("#### 🤸 1. Protocolo FMS (Movilidad y Estabilidad - Puntuación 0 a 3)")
             
-            # Función auxiliar para pintar tarjetas simétricas con selectores numéricos limpios
-            def tarjeta_fms(titulo, es_unilateral=True):
+            def tarjeta_fms_numerica(titulo, es_unilateral=True):
                 st.markdown(f"**{titulo}**")
                 if es_unilateral:
                     cd, ci = st.columns(2)
                     with cd:
-                        val_d = st.slider(f"{titulo} (Derecha)", 0, 3, 3, key=f"fms_{titulo}_der")
+                        val_d = st.number_input(f"{titulo} (Derecha)", min_value=0, max_value=3, value=3, step=1, key=f"fms_{titulo}_der")
                     with ci:
-                        val_i = st.slider(f"{titulo} (Izquierda)", 0, 3, 3, key=f"fms_{titulo}_izq")
+                        val_i = st.number_input(f"{titulo} (Izquierda)", min_value=0, max_value=3, value=3, step=1, key=f"fms_{titulo}_izq")
                     return val_d, val_i
                 else:
-                    val = st.slider(f"{titulo} (Bilateral)", 0, 3, 3, key=f"fms_{titulo}_bi")
+                    val = st.number_input(f"{titulo} (Bilateral)", min_value=0, max_value=3, value=3, step=1, key=f"fms_{titulo}_bi")
                     return val
 
             c_f1, c_f2 = st.columns(2)
             with c_f1:
-                fms_sentadilla = tarjeta_fms("Sentadilla Profunda", es_unilateral=False)
-                fms_obstaculo_d, fms_obstaculo_i = tarjeta_fms("Paso de Obstáculos", es_unilateral=True)
-                fms_zancada_d, fms_zancada_i = tarjeta_fms("Zancada en Línea", es_unilateral=True)
-                fms_hombro_d, fms_hombro_i = tarjeta_fms("Movilidad de Hombro", es_unilateral=True)
+                fms_sentadilla = tarjeta_fms_numerica("Sentadilla Profunda", es_unilateral=False)
+                fms_obstaculo_d, fms_obstaculo_i = tarjeta_fms_numerica("Paso de Obstáculos", es_unilateral=True)
+                fms_zancada_d, fms_zancada_i = tarjeta_fms_numerica("Zancada en Línea", es_unilateral=True)
+                fms_hombro_d, fms_hombro_i = tarjeta_fms_numerica("Movilidad de Hombro", es_unilateral=True)
             with c_f2:
-                fms_pierna_d, fms_pierna_i = tarjeta_fms("Elevación de Pierna Recta", es_unilateral=True)
-                fms_tronco = tarjeta_fms("Estabilidad de Tronco en Flexión", es_unilateral=False)
-                fms_rotatoria = tarjeta_fms("Estabilidad Rotatoria", es_unilateral=False)
+                fms_pierna_d, fms_pierna_i = tarjeta_fms_numerica("Elevación de Pierna Recta", es_unilateral=True)
+                fms_tronco = tarjeta_fms_numerica("Estabilidad de Tronco en Flexión", es_unilateral=False)
+                fms_rotatoria = tarjeta_fms_numerica("Estabilidad Rotatoria", es_unilateral=False)
 
             st.markdown("---")
             
@@ -143,7 +142,7 @@ with tab_nuevo:
             st.markdown("#### 🏋️‍♂️ 4. Estimación 1RM (5 Series de Carga y Velocidad)")
             st.markdown("<small style='color: #64748b;'>Introduce los kg y la velocidad medida del encoder para cada una de las 5 series progresivas.</small>", unsafe_allow_html=True)
             
-            def capturar_5_series(nombre_ejercicio, key_prefix):
+            def capturar_5_series_dinamico(nombre_ejercicio, key_prefix):
                 st.markdown(f"**{nombre_ejercicio}**")
                 pesos_series = []
                 vels_series = []
@@ -157,23 +156,23 @@ with tab_nuevo:
                     pesos_series.append(p)
                     vels_series.append(v)
                 
-                # Estimación simple automática cogiendo la serie con mayor carga o la última efectiva (v > 0)
+                # Cálculo directo en tiempo real basado en los inputs actuales
                 validas = [(pesos_series[i], vels_series[i]) for i in range(5) if vels_series[i] > 0 and pesos_series[i] > 0]
                 if validas:
-                    # Tomamos la serie más pesada con velocidad válida para estimar
                     p_max, v_max = max(validas, key=lambda x: x[0])
                     rm_est = p_max / (v_max / 1.0) if v_max > 0 else p_max
                 else:
                     rm_est = max(pesos_series) if max(pesos_series) > 0 else 0.0
                 
-                st.info(f"💡 **1RM Estimado ({nombre_ejercicio}):** {round(rm_est, 1)} kg")
                 return rm_est, pesos_series, vels_series
 
             cr1, cr2 = st.columns(2)
             with cr1:
-                rm_sq, p_sq_list, v_sq_list = capturar_5_series("Sentadilla", "sq")
+                rm_sq, p_sq_list, v_sq_list = capturar_5_series_dinamico("Sentadilla", "sq")
+                st.info(f"💡 **1RM Estimado (Sentadilla):** {round(rm_sq, 1)} kg")
             with cr2:
-                rm_pm, p_pm_list, v_pm_list = capturar_5_series("Peso Muerto", "pm")
+                rm_pm, p_pm_list, v_pm_list = capturar_5_series_dinamico("Peso Muerto", "pm")
+                st.info(f"💡 **1RM Estimado (Peso Muerto):** {round(rm_pm, 1)} kg")
 
             st.markdown("---")
             comentarios = st.text_area("Observaciones Generales de la Valoración:")
