@@ -10,6 +10,8 @@ if not st.session_state.get("autenticado", False):
     st.warning("Sesión caducada.")
     st.stop()
 
+cargar_datos_sistema()
+
 st.title("👥 Directorio de Deportistas")
 
 tab_academy, tab_elite, tab_promise, tab_mod = st.tabs(["🟢 Academy", "🔵 Elite", "🟣 Promise", "⚙️ Modificar Jugadores"])
