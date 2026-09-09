@@ -47,7 +47,6 @@ if not st.session_state.autenticado:
                         st.error(f"Error al registrar: {e}")
     st.stop()
 
-# Si ya está autenticado, cargamos la pantalla principal
 if not st.session_state.get("datos_cargados", False):
     cargar_datos_sistema()
 
@@ -62,14 +61,15 @@ col1.metric("Deportistas Registrados", total_jugadores)
 col2.metric("Valoraciones Totales", total_vals)
 col3.metric("Programas Activos", "Academy, Elite, Promise")
 
-st.markdown("### 🚀 Accesos Directos")
-c_a, c_b, c_c = st.columns(3)
-with c_a:
-    if st.button("👥 Directorio de Jugadores", use_container_width=True):
-        st.switch_page("pages/1_Directorio_Jugadores.py")
-with c_b:
-    if st.button("📝 Nueva Valoración (Gimnasio)", use_container_width=True):
-        st.switch_page("pages/2_Nueva_Valoracion.py")
-with c_c:
-    if st.button("📈 Perfil y Progreso", use_container_width=True):
-        st.switch_page("pages/3_Perfil_y_Progreso.py")
+st.markdown("### 🚀 Accesos Directos a Módulos")
+c1, c2 = st.columns(2)
+with c1:
+    if st.button("📅 1. Calendario", use_container_width=True):
+        st.switch_page("pages/1_Calendario.py")
+    if st.button("👥 2. Jugadores (Academy, Elite, Promise)", use_container_width=True):
+        st.switch_page("pages/2_Jugadores.py")
+with c2:
+    if st.button("📋 3. Entrenamientos", use_container_width=True):
+        st.switch_page("pages/3_Entrenamientos.py")
+    if st.button("📊 4. Valoraciones y Test", use_container_width=True):
+        st.switch_page("pages/4_Valoraciones.py")
