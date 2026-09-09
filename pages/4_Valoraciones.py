@@ -184,100 +184,135 @@ with tab_informes:
                 st.warning("No hay valoraciones en esta temporada.")
             else:
                 dicc_vals = {row['id']: f"{row['numero_valoracion']} ({row['fecha']})" for idx, row in df_temp.iterrows()}
-                with cf3: val_sel_id = st.selectbox("Nº de Valoración:", options=list(dicc_vals.keys()), format_func=lambda x: dicc_vals[x])
+                with cf3: val_sel_id = st.selectbox("Número de Valoración:", options=list(dicc_vals.keys()), format_func=lambda x: dicc_vals[x])
                 
                 v_data = df_temp[df_temp['id'] == val_sel_id].iloc[0]
                 
-                # --- NUEVA SECCIÓN: RESULTADOS BRUTOS ---
-                st.markdown("---")
-                st.markdown(f"#### 📋 Resultados Brutos del Test - {mapa_jugadores[jug_sel_prog]}")
-                r1, r2, r3 = st.columns(3)
-                with r1:
-                    st.markdown("**🤸 Protocolo FMS (0-3)**")
-                    st.write(f"- **Sentadilla:** {v_data.get('fms_sentadilla', 0)}")
-                    st.write(f"- **Obstáculo (D/I):** {v_data.get('fms_paso_obstaculo_der',0)} / {v_data.get('fms_paso_obstaculo_izq',0)}")
-                    st.write(f"- **Zancada (D/I):** {v_data.get('fms_zancada_der',0)} / {v_data.get('fms_zancada_izq',0)}")
-                    st.write(f"- **Hombro (D/I):** {v_data.get('fms_mov_hombro_der',0)} / {v_data.get('fms_mov_hombro_izq',0)}")
-                    st.write(f"- **P. Recta (D/I):** {v_data.get('fms_elevacion_pierna_der',0)} / {v_data.get('fms_elevacion_pierna_izq',0)}")
-                    st.write(f"- **Estabilidad Tronco:** {v_data.get('fms_estabilidad_tronco',0)}")
-                    st.write(f"- **Estab. Rotatoria:** {v_data.get('fms_estabilidad_rotatoria',0)}")
-                with r2:
-                    st.markdown("**🦘 Test de Salto (cm)**")
-                    st.write(f"- **CMJ Bilateral:** {v_data.get('cmj_bilateral',0)}")
-                    st.write(f"- **CMJ Uni. (D/I):** {v_data.get('cmj_uni_der',0)} / {v_data.get('cmj_uni_izq',0)}")
-                    st.write(f"- **Horizontal (D/I):** {v_data.get('salto_horiz_der',0)} / {v_data.get('salto_horiz_izq',0)}")
-                with r3:
-                    st.markdown("**⚡ Fuerza Isométrica (N)**")
-                    st.write(f"- **Extensión (D/I):** {v_data.get('iso_ext_rodilla_der',0)} / {v_data.get('iso_ext_rodilla_izq',0)}")
-                    st.write(f"- **Flexión (D/I):** {v_data.get('iso_flex_rodilla_der',0)} / {v_data.get('iso_flex_rodilla_izq',0)}")
-                    st.write(f"- **Aductor (D/I):** {v_data.get('iso_add_cadera_der',0)} / {v_data.get('iso_add_cadera_izq',0)}")
-                    st.write(f"- **Abductor (D/I):** {v_data.get('iso_abd_cadera_der',0)} / {v_data.get('iso_abd_cadera_izq',0)}")
-                
-                st.markdown("---")
-                
-                # --- ASIMETRÍAS Y RATIOS LESIONALES ---
+                # Funciones de apoyo para etiquetas visuales (Semáforos)
                 def badge_asi(val):
                     if val < 10: return f"🟢 {val}% (Óptimo)"
-                    elif val <= 15: return f"🟡 {val}% (Atención)"
+                    elif val <= 15: return f"🟡 {val}% (Precaución)"
                     else: return f"🔴 {val}% (Riesgo)"
 
-                st.markdown("#### 🔎 Análisis de Simetría y Ratios Lesionales")
-                c_inf1, c_inf2 = st.columns(2)
-                
-                with c_inf1:
-                    st.markdown("**🦘 Saltos Unilaterales**")
-                    asi_cmj = calcular_asimetria(v_data.get('cmj_uni_der',0), v_data.get('cmj_uni_izq',0))
-                    asi_sh = calcular_asimetria(v_data.get('salto_horiz_der',0), v_data.get('salto_horiz_izq',0))
-                    st.write(f"- **Asimetría CMJ Unilateral:** {badge_asi(asi_cmj)}")
-                    st.write(f"- **Asimetría Salto Horizontal:** {badge_asi(asi_sh)}")
-                
-                with c_inf2:
-                    st.markdown("**⚡ Fuerza Isométrica**")
-                    asi_ext = calcular_asimetria(v_data.get('iso_ext_rodilla_der',0), v_data.get('iso_ext_rodilla_izq',0))
-                    asi_flx = calcular_asimetria(v_data.get('iso_flex_rodilla_der',0), v_data.get('iso_flex_rodilla_izq',0))
-                    st.write(f"- **Asimetría Extensión (Cuádriceps):** {badge_asi(asi_ext)}")
-                    st.write(f"- **Asimetría Flexión (Isquiosurales):** {badge_asi(asi_flx)}")
-                
+                def badge_hq(val): return f"🟢 {val}" if val >= 0.6 else f"🔴 {val} (Déficit Isquiosurales)"
+                def badge_adab(val): return f"🟢 {val}" if val >= 0.9 else f"🔴 {val} (Déficit Aductores)"
+
                 st.markdown("---")
                 
-                cr1, cr2 = st.columns(2)
-                flx_d, ext_d = v_data.get('iso_flex_rodilla_der',0), v_data.get('iso_ext_rodilla_der',0)
-                flx_i, ext_i = v_data.get('iso_flex_rodilla_izq',0), v_data.get('iso_ext_rodilla_izq',0)
+                # ---------------------------------------------------------
+                # 1. MOVILIDAD Y ESTABILIDAD
+                # ---------------------------------------------------------
+                st.markdown("#### 🤸 1. Análisis de Movilidad y Estabilidad (Protocolo FMS)")
+                st.markdown("**Resultados de las Pruebas (Puntuación 0-3)**")
+                
+                cm1, cm2, cm3, cm4, cm5 = st.columns(5)
+                cm1.metric("Sentadilla Profunda", v_data.get('fms_sentadilla', 0))
+                cm2.metric("Estabilidad de Tronco", v_data.get('fms_estabilidad_tronco', 0))
+                cm3.metric("Estabilidad Rotatoria", v_data.get('fms_estabilidad_rotatoria', 0))
+                
+                cm6, cm7, cm8, cm9 = st.columns(4)
+                cm6.metric("Paso de Obstáculo Derecha", v_data.get('fms_paso_obstaculo_der', 0))
+                cm7.metric("Paso de Obstáculo Izquierda", v_data.get('fms_paso_obstaculo_izq', 0))
+                cm8.metric("Zancada en Línea Derecha", v_data.get('fms_zancada_der', 0))
+                cm9.metric("Zancada en Línea Izquierda", v_data.get('fms_zancada_izq', 0))
+                
+                cm10, cm11, cm12, cm13 = st.columns(4)
+                cm10.metric("Movilidad de Hombro Derecha", v_data.get('fms_mov_hombro_der', 0))
+                cm11.metric("Movilidad de Hombro Izquierda", v_data.get('fms_mov_hombro_izq', 0))
+                cm12.metric("Elevación Pierna Recta Derecha", v_data.get('fms_elevacion_pierna_der', 0))
+                cm13.metric("Elevación Pierna Recta Izquierda", v_data.get('fms_elevacion_pierna_izq', 0))
+
+                st.markdown("---")
+
+                # ---------------------------------------------------------
+                # 2. RENDIMIENTO EN SALTO
+                # ---------------------------------------------------------
+                st.markdown("#### 🦘 2. Rendimiento en Salto")
+                st.markdown("**Resultados de las Pruebas (Centímetros)**")
+                
+                cs1, cs2, cs3, cs4, cs5 = st.columns(5)
+                cs1.metric("CMJ Bilateral", f"{v_data.get('cmj_bilateral', 0)} cm")
+                cs2.metric("CMJ Unilateral Derecha", f"{v_data.get('cmj_uni_der', 0)} cm")
+                cs3.metric("CMJ Unilateral Izquierda", f"{v_data.get('cmj_uni_izq', 0)} cm")
+                cs4.metric("Salto Horizontal Derecha", f"{v_data.get('salto_horiz_der', 0)} cm")
+                cs5.metric("Salto Horizontal Izquierda", f"{v_data.get('salto_horiz_izq', 0)} cm")
+                
+                st.markdown("**Análisis de Asimetrías en Salto**")
+                asi_cmj = calcular_asimetria(v_data.get('cmj_uni_der', 0), v_data.get('cmj_uni_izq', 0))
+                asi_sh = calcular_asimetria(v_data.get('salto_horiz_der', 0), v_data.get('salto_horiz_izq', 0))
+                
+                ca1, ca2 = st.columns(2)
+                ca1.info(f"**Asimetría CMJ Unilateral:** {badge_asi(asi_cmj)}")
+                ca2.info(f"**Asimetría Salto Horizontal:** {badge_asi(asi_sh)}")
+
+                st.markdown("---")
+
+                # ---------------------------------------------------------
+                # 3. FUERZA MÁXIMA ISOMÉTRICA
+                # ---------------------------------------------------------
+                st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica")
+                st.markdown("**Resultados de las Pruebas (Newtons)**")
+                
+                ci1, ci2, ci3, ci4 = st.columns(4)
+                ci1.metric("Extensión Cuádriceps Derecha", f"{v_data.get('iso_ext_rodilla_der', 0)} N")
+                ci2.metric("Extensión Cuádriceps Izquierda", f"{v_data.get('iso_ext_rodilla_izq', 0)} N")
+                ci3.metric("Flexión Isquiosurales Derecha", f"{v_data.get('iso_flex_rodilla_der', 0)} N")
+                ci4.metric("Flexión Isquiosurales Izquierda", f"{v_data.get('iso_flex_rodilla_izq', 0)} N")
+                
+                ci5, ci6, ci7, ci8 = st.columns(4)
+                ci5.metric("Aducción Cadera Derecha", f"{v_data.get('iso_add_cadera_der', 0)} N")
+                ci6.metric("Aducción Cadera Izquierda", f"{v_data.get('iso_add_cadera_izq', 0)} N")
+                ci7.metric("Abducción Cadera Derecha", f"{v_data.get('iso_abd_cadera_der', 0)} N")
+                ci8.metric("Abducción Cadera Izquierda", f"{v_data.get('iso_abd_cadera_izq', 0)} N")
+                
+                st.markdown("**Análisis de Asimetrías Isométricas**")
+                asi_ext = calcular_asimetria(v_data.get('iso_ext_rodilla_der', 0), v_data.get('iso_ext_rodilla_izq', 0))
+                asi_flx = calcular_asimetria(v_data.get('iso_flex_rodilla_der', 0), v_data.get('iso_flex_rodilla_izq', 0))
+                
+                cai1, cai2 = st.columns(2)
+                cai1.info(f"**Asimetría Extensión (Cuádriceps):** {badge_asi(asi_ext)}")
+                cai2.info(f"**Asimetría Flexión (Isquiosurales):** {badge_asi(asi_flx)}")
+                
+                st.markdown("**Ratios Clínicos de Prevención Lesional**")
+                flx_d, ext_d = v_data.get('iso_flex_rodilla_der', 0), v_data.get('iso_ext_rodilla_der', 0)
+                flx_i, ext_i = v_data.get('iso_flex_rodilla_izq', 0), v_data.get('iso_ext_rodilla_izq', 0)
                 ratio_hq_d = round(flx_d / ext_d, 2) if ext_d > 0 else 0
                 ratio_hq_i = round(flx_i / ext_i, 2) if ext_i > 0 else 0
                 
-                def badge_hq(val): return f"🟢 {val}" if val >= 0.6 else f"🔴 {val} (Déficit isquio)"
-                
-                with cr1:
-                    st.markdown("**Ratio Isquio/Cuádriceps (H/Q)**")
-                    st.caption("Recomendación: > 0.60 para prevenir lesiones isquiosurales.")
-                    st.write(f"- **Pierna Derecha:** {badge_hq(ratio_hq_d)}")
-                    st.write(f"- **Pierna Izquierda:** {badge_hq(ratio_hq_i)}")
-                
-                add_d, abd_d = v_data.get('iso_add_cadera_der',0), v_data.get('iso_abd_cadera_der',0)
-                add_i, abd_i = v_data.get('iso_add_cadera_izq',0), v_data.get('iso_abd_cadera_izq',0)
+                add_d, abd_d = v_data.get('iso_add_cadera_der', 0), v_data.get('iso_abd_cadera_der', 0)
+                add_i, abd_i = v_data.get('iso_add_cadera_izq', 0), v_data.get('iso_abd_cadera_izq', 0)
                 ratio_adab_d = round(add_d / abd_d, 2) if abd_d > 0 else 0
                 ratio_adab_i = round(add_i / abd_i, 2) if abd_i > 0 else 0
                 
-                def badge_adab(val): return f"🟢 {val}" if val >= 0.9 else f"🔴 {val} (Déficit Aductor)"
-                
+                cr1, cr2 = st.columns(2)
+                with cr1:
+                    st.write("**Ratio Isquiosurales / Cuádriceps** (Recomendado > 0.60)")
+                    st.write(f"- Pierna Derecha: {badge_hq(ratio_hq_d)}")
+                    st.write(f"- Pierna Izquierda: {badge_hq(ratio_hq_i)}")
                 with cr2:
-                    st.markdown("**Ratio Aductor/Abductor**")
-                    st.caption("Recomendación: > 0.90 para prevenir pubalgias/lesión aductor.")
-                    st.write(f"- **Pierna Derecha:** {badge_adab(ratio_adab_d)}")
-                    st.write(f"- **Pierna Izquierda:** {badge_adab(ratio_adab_i)}")
-                
+                    st.write("**Ratio Aductores / Abductores** (Recomendado > 0.90)")
+                    st.write(f"- Pierna Derecha: {badge_adab(ratio_adab_d)}")
+                    st.write(f"- Pierna Izquierda: {badge_adab(ratio_adab_i)}")
+
                 st.markdown("---")
-                
-                # --- PERFIL 1RM Y ESTIMACIONES ---
-                st.markdown("#### 🏋️‍♂️ Perfil de Cargas (1RM Estimado) y Proyecciones")
+
+                # ---------------------------------------------------------
+                # 4. FUERZA MÁXIMA (1RM)
+                # ---------------------------------------------------------
+                st.markdown("#### 🏋️‍♂️ 4. Fuerza Máxima Estimada")
                 sq_rm = v_data.get('rm_sentadilla', 0.0)
                 dl_rm = v_data.get('rm_peso_muerto', 0.0)
                 
+                st.markdown("**Resultados Principales (Kilogramos)**")
+                crm1, crm2 = st.columns(2)
+                crm1.metric("1RM Sentadilla", f"{sq_rm} kg")
+                crm2.metric("1RM Peso Muerto", f"{dl_rm} kg")
+                
                 if sq_rm > 0 or dl_rm > 0:
+                    st.markdown("**Proyecciones y Zonas de Entrenamiento**")
                     cz1, cz2 = st.columns(2)
                     with cz1:
-                        st.markdown("**Zonas de Carga (Básicos)**")
+                        st.markdown("*Zonas de Carga de Ejercicios Básicos*")
                         df_zonas = pd.DataFrame({
                             "Intensidad": ["100% (1RM)", "90%", "80%", "70%", "60%"],
                             "Sentadilla (kg)": [sq_rm, round(sq_rm*0.9,1), round(sq_rm*0.8,1), round(sq_rm*0.7,1), round(sq_rm*0.6,1)],
@@ -286,20 +321,20 @@ with tab_informes:
                         st.dataframe(df_zonas, hide_index=True)
                     
                     with cz2:
-                        st.markdown("**Estimación Ejercicios Accesorios (1RM)**")
-                        st.caption("Basado en % bibliográficos derivados del Bilateral.")
+                        st.markdown("*Estimación para Ejercicios Accesorios (1RM)*")
                         df_acc = pd.DataFrame({
-                            "Ejercicio": ["Hip Thrust", "PM Asimétrico", "Sentadilla Búlgara", "Zancada", "RDL Unilateral"],
-                            "Referencia": ["120% SQ", "70% DL", "50% SQ", "45% SQ", "45% DL"],
+                            "Ejercicio Accesorio": ["Empuje de Cadera (Hip Thrust)", "Peso Muerto Asimétrico", "Sentadilla Búlgara", "Zancada", "Peso Muerto Rumano Unilateral"],
                             "Estimación (kg)": [
-                                round(sq_rm * 1.20, 1), round(dl_rm * 0.70, 1),
-                                round(sq_rm * 0.50, 1), round(sq_rm * 0.45, 1),
+                                round(sq_rm * 1.20, 1),
+                                round(dl_rm * 0.70, 1),
+                                round(sq_rm * 0.50, 1),
+                                round(sq_rm * 0.45, 1),
                                 round(dl_rm * 0.45, 1)
                             ]
                         })
                         st.dataframe(df_acc, hide_index=True)
                 else:
-                    st.info("No se registraron datos válidos de 1RM en esta valoración para proyectar cargas.")
+                    st.info("No se registraron datos válidos de 1RM en esta valoración para proyectar zonas de entrenamiento ni accesorios.")
 
 # ==========================================
 # PESTAÑA 3: TABLA DE REGISTROS
