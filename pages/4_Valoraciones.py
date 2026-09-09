@@ -1,9 +1,10 @@
 import streamlit as st
 from database.db_manager import supabase, cargar_datos_sistema
-from utils.math_helpers import aplicar_estilos_base, calcular_asimetria
+from utils.math_helpers import aplicar_estilos_base, calcular_asimetria, safe_float
 from datetime import date
 import pandas as pd
 import plotly.express as px
+import numpy as np
 
 st.set_page_config(page_title="Valoraciones - ImpulseFootball", page_icon="📊", layout="wide")
 aplicar_estilos_base()
@@ -102,7 +103,7 @@ with tab_nuevo:
             st.markdown("---")
             
             # --- 🏋️‍♂️ 4. 1RM ---
-            st.markdown("#### 🏋️‍♂️ 4. Estimación 1RM (Carga y Velocidad)")
+            st.markdown("#### 🏋️‍♂️ 4. Perfil Carga-Velocidad y 1RM")
             
             st.markdown("**Sentadilla**")
             c_sq = st.columns(10)
@@ -148,7 +149,10 @@ with tab_nuevo:
                         "iso_flex_rodilla_der": iso_flx_d, "iso_flex_rodilla_izq": iso_flx_i,
                         "iso_add_cadera_der": iso_add_d, "iso_add_cadera_izq": iso_add_i,
                         "iso_abd_cadera_der": iso_abd_d, "iso_abd_cadera_izq": iso_abd_i,
-                        "rm_sentadilla": float(rm_sq), "rm_peso_muerto": float(rm_pm), "comentarios": comentarios
+                        "rm_sentadilla": float(rm_sq), "rm_peso_muerto": float(rm_pm),
+                        "perfil_sentadilla": {"kg": p_sq, "vel": v_sq},
+                        "perfil_peso_muerto": {"kg": p_pm, "vel": v_pm},
+                        "comentarios": comentarios
                     }
                     supabase.table("valoraciones_condicionales").insert(nuevo_test).execute()
                     cargar_datos_sistema()
@@ -186,7 +190,8 @@ with tab_informes:
                 with cf3: val_sel_id = st.selectbox("Número de Valoración:", options=list(dicc_vals.keys()), format_func=lambda x: dicc_vals[x])
                 
                 v_data = df_temp[df_temp['id'] == val_sel_id].iloc[0]
-                peso_actual = v_data.get('peso_corporal', 70.0) # Valor por defecto si falta
+                peso_actual = safe_float(v_data.get('peso_corporal'))
+                if peso_actual == 0: peso_actual = 70.0 # Prevención de división por 0
                 
                 def kpi_compacto(titulo, valor):
                     st.markdown(f"<div style='line-height: 1.2; margin-bottom: 12px;'><span style='font-size: 0.80em; color: #64748b; font-weight: 600;'>{titulo}</span><br><span style='font-size: 1.2em; font-weight: 800;'>{valor}</span></div>", unsafe_allow_html=True)
@@ -221,7 +226,6 @@ with tab_informes:
                 with cm10: kpi_compacto("FMS 6: Estabilidad Tronco", v_data.get('fms_estabilidad_tronco', 0))
                 with cm11: kpi_compacto("FMS 7: Estabilidad Rotatoria", v_data.get('fms_estabilidad_rotatoria', 0))
 
-                # Clústeres FMS
                 mov_total = sum([v_data.get('fms_mov_hombro_der',0), v_data.get('fms_mov_hombro_izq',0), v_data.get('fms_elevacion_pierna_der',0), v_data.get('fms_elevacion_pierna_izq',0)])
                 ctrl_total = sum([v_data.get('fms_sentadilla',0), v_data.get('fms_estabilidad_tronco',0), v_data.get('fms_estabilidad_rotatoria',0), v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0), v_data.get('fms_zancada_der',0), v_data.get('fms_zancada_izq',0)])
                 
@@ -245,7 +249,6 @@ with tab_informes:
                 
                 asi_cmj = calcular_asimetria(v_data.get('cmj_uni_der', 0), v_data.get('cmj_uni_izq', 0))
                 
-                # Déficit Bilateral
                 cmj_bi = float(v_data.get('cmj_bilateral', 0))
                 cmj_uni_sum = float(v_data.get('cmj_uni_der', 0)) + float(v_data.get('cmj_uni_izq', 0))
                 dbl = round(100 * (cmj_bi / cmj_uni_sum) - 100, 1) if cmj_uni_sum > 0 else 0
@@ -299,16 +302,46 @@ with tab_informes:
                 # ---------------------------------------------------------
                 # 4. FUERZA MÁXIMA
                 # ---------------------------------------------------------
-                st.markdown("#### 🏋️‍♂️ 4. Fuerza Máxima Estimada")
-                sq_rm = v_data.get('rm_sentadilla', 0.0)
-                dl_rm = v_data.get('rm_peso_muerto', 0.0)
+                st.markdown("#### 🏋️‍♂️ 4. Fuerza Máxima y Perfil F-V")
+                sq_rm = safe_float(v_data.get('rm_sentadilla'))
+                dl_rm = safe_float(v_data.get('rm_peso_muerto'))
                 
                 crm1, crm2, crm3, crm4 = st.columns(4)
                 with crm1: kpi_compacto("Estimación 1RM Sentadilla", f"{sq_rm} kg")
                 with crm2: kpi_compacto("Estimación 1RM Peso Muerto", f"{dl_rm} kg")
-                with crm3: kpi_compacto("Fuerza Relativa Sentadilla", f"{round(sq_rm / peso_actual, 2) if peso_actual > 0 else 0}x Peso Corporal")
-                with crm4: kpi_compacto("Fuerza Relativa Peso Muerto", f"{round(dl_rm / peso_actual, 2) if peso_actual > 0 else 0}x Peso Corporal")
+                with crm3: kpi_compacto("Fuerza Relativa Sentadilla", f"{round(sq_rm / peso_actual, 2)}x Peso Corporal")
+                with crm4: kpi_compacto("Fuerza Relativa Peso Muerto", f"{round(dl_rm / peso_actual, 2)}x Peso Corporal")
                 
+                # --- GRÁFICOS DE PERFIL FUERZA-VELOCIDAD ---
+                def graficar_perfil(datos_json, titulo):
+                    if not datos_json or not isinstance(datos_json, dict): return None
+                    kgs = [k for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0]
+                    vels = [v for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0]
+                    
+                    if len(kgs) > 1:
+                        fig = px.scatter(x=kgs, y=vels, labels={'x': 'Carga (kg)', 'y': 'Velocidad (m/s)'}, title=titulo)
+                        fig.update_traces(marker=dict(size=10, color='#dc2626'))
+                        
+                        # Regresión lineal (Tendencia)
+                        z = np.polyfit(kgs, vels, 1)
+                        p = np.poly1d(z)
+                        x_trend = np.linspace(min(kgs), max(kgs), 50)
+                        fig.add_scatter(x=x_trend, y=p(x_trend), mode='lines', name='Tendencia', line=dict(dash='dash', color='#64748b'))
+                        
+                        fig.update_layout(showlegend=False, height=350, margin=dict(l=20, r=20, t=40, b=20))
+                        return fig
+                    return None
+
+                p_sq_data = v_data.get('perfil_sentadilla', {})
+                p_pm_data = v_data.get('perfil_peso_muerto', {})
+                fig_sq = graficar_perfil(p_sq_data, "Perfil F-V Sentadilla")
+                fig_pm = graficar_perfil(p_pm_data, "Perfil F-V Peso Muerto")
+
+                if fig_sq or fig_pm:
+                    c_fig1, c_fig2 = st.columns(2)
+                    if fig_sq: c_fig1.plotly_chart(fig_sq, use_container_width=True)
+                    if fig_pm: c_fig2.plotly_chart(fig_pm, use_container_width=True)
+
                 if sq_rm > 0 or dl_rm > 0:
                     cz1, cz2 = st.columns(2)
                     with cz1:
@@ -325,10 +358,8 @@ with tab_informes:
                         df_acc = pd.DataFrame({
                             "Ejercicio Accesorio": ["Empuje de Cadera", "Peso Muerto Asimétrico", "Sentadilla Búlgara", "Zancada", "Peso Muerto Rumano Unilateral"],
                             "Estimación (kg)": [
-                                round(sq_rm * 1.20, 1),
-                                round(dl_rm * 0.70, 1),
-                                round(sq_rm * 0.50, 1),
-                                round(sq_rm * 0.45, 1),
+                                round(sq_rm * 1.20, 1), round(dl_rm * 0.70, 1),
+                                round(sq_rm * 0.50, 1), round(sq_rm * 0.45, 1),
                                 round(dl_rm * 0.45, 1)
                             ]
                         })
