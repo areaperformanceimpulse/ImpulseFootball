@@ -1,1 +1,7 @@
-
+streamlit
+supabase
+pandas
+numpy
+plotly
+openpyxl
+fpdf2
