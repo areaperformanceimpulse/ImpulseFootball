@@ -39,7 +39,7 @@ with tab_nuevo:
             with cg2: 
                 anos = [f"{str(y)[-2:]}/{str(y+1)[-2:]}" for y in range(2024, 2030)]
                 temporada = st.selectbox("Temporada:", options=anos, index=1)
-            with cg3: num_val = st.number_input("Nº Val:", min_value=1, max_value=10, value=1, step=1)
+            with cg3: num_val = st.number_input("N.º de Valoración:", min_value=1, max_value=10, value=1, step=1)
             with cg4: lesion = st.radio("¿Lesión activa?", options=["No", "Sí"], horizontal=True, index=0)
             with cg5: fecha_test = st.date_input("Fecha:", value=date.today())
             
@@ -48,19 +48,19 @@ with tab_nuevo:
             # --- 🤸 1. FMS (Fila 1: 5 variables | Fila 2: 6 variables) ---
             st.markdown("#### 🤸 1. Protocolo FMS (0 a 3)")
             cf1, cf2, cf3, cf4, cf5 = st.columns(5)
-            with cf1: fms_sentadilla = st.number_input("Sentadilla", 0, 3, 3)
-            with cf2: fms_obstaculo_d = st.number_input("Obstáculo Der.", 0, 3, 3)
-            with cf3: fms_obstaculo_i = st.number_input("Obstáculo Izq.", 0, 3, 3)
-            with cf4: fms_zancada_d = st.number_input("Zancada Der.", 0, 3, 3)
-            with cf5: fms_zancada_i = st.number_input("Zancada Izq.", 0, 3, 3)
+            with cf1: fms_sentadilla = st.number_input("FMS1: Sentadilla profunda", 0, 3, 3)
+            with cf2: fms_obstaculo_d = st.number_input("FMS2: Paso de Obstáculo (D).", 0, 3, 3)
+            with cf3: fms_obstaculo_i = st.number_input("FMS2: Paso de Obstáculo (I).", 0, 3, 3)
+            with cf4: fms_zancada_d = st.number_input("FMS3: Zancada (D).", 0, 3, 3)
+            with cf5: fms_zancada_i = st.number_input("FMS3: Zancada (I).", 0, 3, 3)
             
             cf6, cf7, cf8, cf9, cf10, cf11 = st.columns(6)
-            with cf6: fms_hombro_d = st.number_input("Hombro Der.", 0, 3, 3)
-            with cf7: fms_hombro_i = st.number_input("Hombro Izq.", 0, 3, 3)
-            with cf8: fms_pierna_d = st.number_input("P. Recta Der.", 0, 3, 3)
-            with cf9: fms_pierna_i = st.number_input("P. Recta Izq.", 0, 3, 3)
-            with cf10: fms_tronco = st.number_input("Est. Tronco", 0, 3, 3)
-            with cf11: fms_rotatoria = st.number_input("Est. Rotatoria", 0, 3, 3)
+            with cf6: fms_hombro_d = st.number_input("FMS4: Movilidad de Hombro (D).", 0, 3, 3)
+            with cf7: fms_hombro_i = st.number_input("FMS4: Movilidad de Hombro (I)", 0, 3, 3)
+            with cf8: fms_pierna_d = st.number_input("FMS5: Elevación de pierna (D)", 0, 3, 3)
+            with cf9: fms_pierna_i = st.number_input("FMS5: Elevación de pierna (I)", 0, 3, 3)
+            with cf10: fms_tronco = st.number_input("FMS6: Estabilidad de Tronco", 0, 3, 3)
+            with cf11: fms_rotatoria = st.number_input("FMS7: Estabilidad Rotatoria", 0, 3, 3)
 
             st.markdown("---")
             
@@ -68,10 +68,10 @@ with tab_nuevo:
             st.markdown("#### 🦘 2. Test de Salto (cm)")
             cs1, cs2, cs3, cs4, cs5 = st.columns(5)
             with cs1: cmj_bi = st.number_input("CMJ Bilateral", min_value=0.0, value=0.0, step=0.5)
-            with cs2: cmj_ud = st.number_input("CMJ Uni. Der.", min_value=0.0, value=0.0, step=0.5)
-            with cs3: cmj_ui = st.number_input("CMJ Uni. Izq.", min_value=0.0, value=0.0, step=0.5)
-            with cs4: sh_d = st.number_input("Horiz. Der.", min_value=0.0, value=0.0, step=1.0)
-            with cs5: sh_i = st.number_input("Horiz. Izq.", min_value=0.0, value=0.0, step=1.0)
+            with cs2: cmj_ud = st.number_input("CMJ Unilateral (D)", min_value=0.0, value=0.0, step=0.5)
+            with cs3: cmj_ui = st.number_input("CMJ Unilateral (I)", min_value=0.0, value=0.0, step=0.5)
+            with cs4: sh_d = st.number_input("Salto horizontal (D).", min_value=0.0, value=0.0, step=1.0)
+            with cs5: sh_i = st.number_input("Salto horizontal (I)", min_value=0.0, value=0.0, step=1.0)
 
             st.markdown("---")
             
@@ -79,25 +79,25 @@ with tab_nuevo:
             st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica (N)")
             ci1, ci2, ci3, ci4 = st.columns(4)
             with ci1:
-                st.markdown("**Extensión (Cuád)**")
+                st.markdown("**Extensión de Rodilla**")
                 c_ed, c_ei = st.columns(2)
-                with c_ed: iso_ext_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="ext_d")
-                with c_ei: iso_ext_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="ext_i")
+                with c_ed: iso_ext_d = st.number_input("Derecha", min_value=0.0, value=0.0, step=1.0, key="ext_d")
+                with c_ei: iso_ext_i = st.number_input("Izquierda", min_value=0.0, value=0.0, step=1.0, key="ext_i")
             with ci2:
-                st.markdown("**Flexión (Isq)**")
+                st.markdown("**Flexión de Rodilla**")
                 c_fd, c_fi = st.columns(2)
-                with c_fd: iso_flx_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="flx_d")
-                with c_fi: iso_flx_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="flx_i")
+                with c_fd: iso_flx_d = st.number_input("Derecha", min_value=0.0, value=0.0, step=1.0, key="flx_d")
+                with c_fi: iso_flx_i = st.number_input("Izquierda", min_value=0.0, value=0.0, step=1.0, key="flx_i")
             with ci3:
-                st.markdown("**Aducción**")
+                st.markdown("**Aducción de Cadera**")
                 c_ad, c_ai = st.columns(2)
-                with c_ad: iso_add_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="add_d")
-                with c_ai: iso_add_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="add_i")
+                with c_ad: iso_add_d = st.number_input("Derecha", min_value=0.0, value=0.0, step=1.0, key="add_d")
+                with c_ai: iso_add_i = st.number_input("Izquierda", min_value=0.0, value=0.0, step=1.0, key="add_i")
             with ci4:
-                st.markdown("**Abducción**")
+                st.markdown("**Abducción de Cadera**")
                 c_abd, c_abi = st.columns(2)
-                with c_abd: iso_abd_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="abd_d")
-                with c_abi: iso_abd_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="abd_i")
+                with c_abd: iso_abd_d = st.number_input("Derecha", min_value=0.0, value=0.0, step=1.0, key="abd_d")
+                with c_abi: iso_abd_i = st.number_input("Izquierda", min_value=0.0, value=0.0, step=1.0, key="abd_i")
 
             st.markdown("---")
             
