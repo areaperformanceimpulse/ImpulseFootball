@@ -275,9 +275,9 @@ with tab_informes:
                 st.markdown("---")
 
                 # ---------------------------------------------------------
-                # 3. FUERZA MÁXIMA ISOMÉTRICA
+                # 3. FUERZA MÁXIMA ISOMÉTRICA Y FUERZA RELATIVA
                 # ---------------------------------------------------------
-                st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica")
+                st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica y Fuerza Relativa")
                 
                 ci1, ci2, ci3, ci4, ci5, ci6, ci7, ci8 = st.columns(8)
                 with ci1: kpi_compacto("Extensión Cuádriceps (D)", f"{v_data.get('iso_ext_rodilla_der', 0)} N")
@@ -305,12 +305,22 @@ with tab_informes:
                 add_i, abd_i = v_data.get('iso_add_cadera_izq', 0), v_data.get('iso_abd_cadera_izq', 0)
                 ratio_adab_d = round(add_d / abd_d, 2) if abd_d > 0 else 0
                 ratio_adab_i = round(add_i / abd_i, 2) if abd_i > 0 else 0
+
+                # Nueva métrica: Fuerza Relativa Isométrica (N/kg)
+                f_rel_flx_d = round(flx_d / peso_actual, 2) if peso_actual > 0 else 0
+                f_rel_flx_i = round(flx_i / peso_actual, 2) if peso_actual > 0 else 0
+                def badge_nkg(val): return f"🟢 {val} N/kg" if val >= 3.5 else f"🔴 {val} N/kg (Debilidad base)"
                 
+                st.markdown("**Ratios Clínicos y Fuerza Relativa Isométrica**")
                 cr1, cr2, cr3, cr4 = st.columns(4)
-                with cr1: st.info(f"**Isquiosurales / Cuádriceps (D):**\n{badge_hq(ratio_hq_d)}")
-                with cr2: st.info(f"**Isquiosurales / Cuádriceps (I):**\n{badge_hq(ratio_hq_i)}")
-                with cr3: st.info(f"**Aductores / Abductores (D):**\n{badge_adab(ratio_adab_d)}")
-                with cr4: st.info(f"**Aductores / Abductores (I):**\n{badge_adab(ratio_adab_i)}")
+                with cr1: st.info(f"**Isq/Cuád (D):**\n{badge_hq(ratio_hq_d)}")
+                with cr2: st.info(f"**Isq/Cuád (I):**\n{badge_hq(ratio_hq_i)}")
+                with cr3: st.info(f"**F. Relativa Isquiosural (D):**\n{badge_nkg(f_rel_flx_d)}\n*(Óptimo > 3.5 N/kg)*")
+                with cr4: st.info(f"**F. Relativa Isquiosural (I):**\n{badge_nkg(f_rel_flx_i)}\n*(Óptimo > 3.5 N/kg)*")
+
+                c_adab1, c_adab2 = st.columns(2)
+                c_adab1.info(f"**Aductores / Abductores (D):** {badge_adab(ratio_adab_d)}")
+                c_adab2.info(f"**Aductores / Abductores (I):** {badge_adab(ratio_adab_i)}")
 
                 st.markdown("---")
 
@@ -432,7 +442,50 @@ with tab_informes:
                         st.dataframe(df_acc, hide_index=True)
                 else:
                     st.info("No se registraron datos válidos en esta valoración para calcular las proyecciones.")
-
+                # ---------------------------------------------------------
+                # 5. ASIMETRÍA DIRECCIONAL GLOBAL (EL ESLABÓN DÉBIL)
+                # ---------------------------------------------------------
+                st.markdown("#### 🧭 5. Asimetría Direccional Global (El Eslabón Débil)")
+                
+                # Algoritmo de "Victorias" unilaterales (10 Pruebas Totales)
+                puntos_der, puntos_izq, empates = 0, 0, 0
+                pruebas_uni = [
+                    (v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0)),
+                    (v_data.get('fms_zancada_der',0), v_data.get('fms_zancada_izq',0)),
+                    (v_data.get('fms_mov_hombro_der',0), v_data.get('fms_mov_hombro_izq',0)),
+                    (v_data.get('fms_elevacion_pierna_der',0), v_data.get('fms_elevacion_pierna_izq',0)),
+                    (v_data.get('cmj_uni_der',0), v_data.get('cmj_uni_izq',0)),
+                    (v_data.get('salto_horiz_der',0), v_data.get('salto_horiz_izq',0)),
+                    (v_data.get('iso_ext_rodilla_der',0), v_data.get('iso_ext_rodilla_izq',0)),
+                    (v_data.get('iso_flex_rodilla_der',0), v_data.get('iso_flex_rodilla_izq',0)),
+                    (v_data.get('iso_add_cadera_der',0), v_data.get('iso_add_cadera_izq',0)),
+                    (v_data.get('iso_abd_cadera_der',0), v_data.get('iso_abd_cadera_izq',0))
+                ]
+                
+                for der, izq in pruebas_uni:
+                    if der > izq: puntos_der += 1
+                    elif izq > der: puntos_izq += 1
+                    else: empates += 1
+                
+                total_tests = 10
+                
+                if puntos_der >= puntos_izq + 3:
+                    dom_txt = "🦵 Dominancia Derecha Consistente"
+                    eslabon_txt = "⚠️ Hemicuerpo Izquierdo (Priorizar entrenamiento compensatorio)"
+                elif puntos_izq >= puntos_der + 3:
+                    dom_txt = "🦵 Dominancia Izquierda Consistente"
+                    eslabon_txt = "⚠️ Hemicuerpo Derecho (Priorizar entrenamiento compensatorio)"
+                else:
+                    dom_txt = "⚖️ Perfil Simétrico Equilibrado"
+                    eslabon_txt = "Ninguno (Buen control inter-extremidades)"
+                    
+                ce1, ce2, ce3 = st.columns(3)
+                with ce1: kpi_compacto("Mejores Marcas (Pierna Derecha)", f"{puntos_der} / {total_tests}")
+                with ce2: kpi_compacto("Mejores Marcas (Pierna Izquierda)", f"{puntos_izq} / {total_tests}")
+                with ce3: kpi_compacto("Empates Bilaterales", f"{empates} / {total_tests}")
+                
+                st.info(f"**Análisis de Tendencia Direccional:** {dom_txt} | **Eslabón Débil a compensar:** {eslabon_txt}")
+                st.markdown("---")
 # ==========================================
 # PESTAÑA 3: TABLA DE REGISTROS
 # ==========================================
