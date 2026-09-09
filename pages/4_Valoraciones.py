@@ -312,35 +312,71 @@ with tab_informes:
                 with crm3: kpi_compacto("Fuerza Relativa Sentadilla", f"{round(sq_rm / peso_actual, 2)}x Peso Corporal")
                 with crm4: kpi_compacto("Fuerza Relativa Peso Muerto", f"{round(dl_rm / peso_actual, 2)}x Peso Corporal")
                 
-                # --- GRÁFICOS DE PERFIL FUERZA-VELOCIDAD ---
-                def graficar_perfil(datos_json, titulo):
-                    if not datos_json or not isinstance(datos_json, dict): return None
-                    kgs = [k for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0]
-                    vels = [v for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0]
+                # --- GRÁFICOS DE PERFIL FUERZA-VELOCIDAD Y CUADRANTE ---
+                def analizar_perfil_fv(datos_json, titulo, peso_corp):
+                    if not datos_json or not isinstance(datos_json, dict): return None, None
+                    kgs = np.array([k for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0])
+                    vels = np.array([v for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0])
                     
                     if len(kgs) > 1:
-                        fig = px.scatter(x=kgs, y=vels, labels={'x': 'Carga (kg)', 'y': 'Velocidad (m/s)'}, title=titulo)
-                        fig.update_traces(marker=dict(size=10, color='#dc2626'))
-                        
-                        # Regresión lineal (Tendencia)
+                        # 1. Regresión lineal
                         z = np.polyfit(kgs, vels, 1)
                         p = np.poly1d(z)
+                        slope, intercept = z[0], z[1]
+                        
+                        # 2. Cálculo de R^2 (Fiabilidad)
+                        ss_res = np.sum((vels - p(kgs))**2)
+                        ss_tot = np.sum((vels - np.mean(vels))**2)
+                        r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+                        
+                        # 3. Variables Teóricas
+                        v0 = intercept # Vel. a 0 kg
+                        f0_kg = -intercept / slope if slope < 0 else 0 # Carga a 0 m/s
+                        f0_rel = f0_kg / peso_corp if peso_corp > 0 else 0 # Fuerza Relativa Teórica
+                        
+                        # 4. Clasificación en Cuadrante (Valores normativos estándar)
+                        if f0_rel >= 2.2 and v0 >= 1.3:
+                            cuadrante = "🟢 Perfil Óptimo (Fuerte y Rápido)"
+                        elif f0_rel < 2.2 and v0 >= 1.3:
+                            cuadrante = "🟡 Déficit de Fuerza (Rápido pero Débil)"
+                        elif f0_rel >= 2.2 and v0 < 1.3:
+                            cuadrante = "🟡 Déficit de Velocidad (Fuerte pero Lento)"
+                        else:
+                            cuadrante = "🔴 Déficit Global (Débil y Lento)"
+                            
+                        # 5. Creación del Gráfico
+                        fig = px.scatter(x=kgs, y=vels, labels={'x': 'Carga (kg)', 'y': 'Velocidad (m/s)'}, title=titulo)
+                        fig.update_traces(marker=dict(size=10, color='#dc2626'))
                         x_trend = np.linspace(min(kgs), max(kgs), 50)
                         fig.add_scatter(x=x_trend, y=p(x_trend), mode='lines', name='Tendencia', line=dict(dash='dash', color='#64748b'))
+                        fig.update_layout(showlegend=False, height=300, margin=dict(l=20, r=20, t=40, b=20))
                         
-                        fig.update_layout(showlegend=False, height=350, margin=dict(l=20, r=20, t=40, b=20))
-                        return fig
-                    return None
+                        stats = {"r2": r2, "v0": v0, "f0_kg": f0_kg, "cuadrante": cuadrante}
+                        return fig, stats
+                    return None, None
 
                 p_sq_data = v_data.get('perfil_sentadilla', {})
                 p_pm_data = v_data.get('perfil_peso_muerto', {})
-                fig_sq = graficar_perfil(p_sq_data, "Perfil F-V Sentadilla")
-                fig_pm = graficar_perfil(p_pm_data, "Perfil F-V Peso Muerto")
+                
+                fig_sq, stats_sq = analizar_perfil_fv(p_sq_data, "Perfil F-V Sentadilla", peso_actual)
+                fig_pm, stats_pm = analizar_perfil_fv(p_pm_data, "Perfil F-V Peso Muerto", peso_actual)
 
                 if fig_sq or fig_pm:
                     c_fig1, c_fig2 = st.columns(2)
-                    if fig_sq: c_fig1.plotly_chart(fig_sq, use_container_width=True)
-                    if fig_pm: c_fig2.plotly_chart(fig_pm, use_container_width=True)
+                    
+                    with c_fig1:
+                        if fig_sq:
+                            st.plotly_chart(fig_sq, use_container_width=True)
+                            fiabilidad_sq = "🟢 Excelente" if stats_sq['r2'] >= 0.95 else ("🟡 Aceptable" if stats_sq['r2'] >= 0.90 else "🔴 Pobre (Falta intención)")
+                            st.info(f"**Diagnóstico SQ:** {stats_sq['cuadrante']}\n\n**V0 Teórica:** {round(stats_sq['v0'], 2)} m/s | **F0 Teórica:** {round(stats_sq['f0_kg'], 1)} kg\n\n**Fiabilidad del test ($R^2$):** {round(stats_sq['r2'], 3)} ({fiabilidad_sq})")
+                            
+                    with c_fig2:
+                        if fig_pm:
+                            st.plotly_chart(fig_pm, use_container_width=True)
+                            fiabilidad_pm = "🟢 Excelente" if stats_pm['r2'] >= 0.95 else ("🟡 Aceptable" if stats_pm['r2'] >= 0.90 else "🔴 Pobre (Falta intención)")
+                            st.info(f"**Diagnóstico PM:** {stats_pm['cuadrante']}\n\n**V0 Teórica:** {round(stats_pm['v0'], 2)} m/s | **F0 Teórica:** {round(stats_pm['f0_kg'], 1)} kg\n\n**Fiabilidad del test ($R^2$):** {round(stats_pm['r2'], 3)} ({fiabilidad_pm})")
+
+                st.markdown("---")
 
                 if sq_rm > 0 or dl_rm > 0:
                     cz1, cz2 = st.columns(2)
