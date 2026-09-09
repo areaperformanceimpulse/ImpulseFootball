@@ -140,39 +140,39 @@ with tab_nuevo:
             # 4. ESTIMACIÓN 1RM (5 SERIES: PESO Y VELOCIDAD)
             # ==========================================
             st.markdown("#### 🏋️‍♂️ 4. Estimación 1RM (5 Series de Carga y Velocidad)")
-            st.markdown("<small style='color: #64748b;'>Introduce los kg y la velocidad medida del encoder para cada una de las 5 series progresivas.</small>", unsafe_allow_html=True)
+            st.markdown("<small style='color: #64748b;'>Introduce los kg y la velocidad del encoder. El valor se calculará al pulsar el botón o guardar.</small>", unsafe_allow_html=True)
 
-            def calcular_rm_en_tiempo_real(nombre_ejercicio, key_prefix):
+            def inputs_5_series(nombre_ejercicio, key_prefix):
                 st.markdown(f"**{nombre_ejercicio}**")
-                pesos_series = []
-                vels_series = []
-                
+                p_list, v_list = [], []
                 for s in range(1, 6):
-                    cs1, cs2 = st.columns(2)
-                    with cs1:
-                        p = st.number_input(f"Serie {s} - Kg ({nombre_ejercicio})", min_value=0.0, value=0.0, step=2.5, key=f"{key_prefix}_p_{s}")
-                    with cs2:
-                        v = st.number_input(f"Serie {s} - Velocidad m/s ({nombre_ejercicio})", min_value=0.0, value=0.0, step=0.01, key=f"{key_prefix}_v_{s}")
-                    pesos_series.append(p)
-                    vels_series.append(v)
-                
-                validas = [(pesos_series[i], vels_series[i]) for i in range(5) if vels_series[i] > 0 and pesos_series[i] > 0]
-                if validas:
-                    p_max, v_max = max(validas, key=lambda x: x[0])
-                    rm_est = p_max / (v_max / 1.0) if v_max > 0 else p_max
-                else:
-                    rm_est = max(pesos_series) if max(pesos_series) > 0 else 0.0
-                
-                return round(rm_est, 1)
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        p = st.number_input(f"Serie {s} - Kg", min_value=0.0, value=0.0, step=2.5, key=f"{key_prefix}_p_{s}")
+                    with c2:
+                        v = st.number_input(f"Serie {s} - Velocidad m/s", min_value=0.0, value=0.0, step=0.01, key=f"{key_prefix}_v_{s}")
+                    p_list.append(p)
+                    v_list.append(v)
+                return p_list, v_list
 
             cr1, cr2 = st.columns(2)
             with cr1:
-                rm_sq = calcular_rm_en_tiempo_real("Sentadilla", "sq")
-                st.info(f"💡 **1RM Estimado (Sentadilla):** {rm_sq} kg")
+                p_sq, v_sq = inputs_5_series("Sentadilla", "sq")
             with cr2:
-                rm_pm = calcular_rm_en_tiempo_real("Peso Muerto", "pm")
-                st.info(f"💡 **1RM Estimado (Peso Muerto):** {rm_pm} kg")
+                p_pm, v_pm = inputs_5_series("Peso Muerto", "pm")
 
+            # Cálculo automático seguro basado en la serie con mayor carga con velocidad válida (> 0)
+            def calcular_rm_final(pesos, vels):
+                validas = [(pesos[i], vels[i]) for i in range(5) if vels[i] > 0 and pesos[i] > 0]
+                if validas:
+                    p_max, v_max = max(validas, key=lambda x: x[0])
+                    return round(p_max / v_max, 1) # Fórmula básica de estimación 1RM (Carga / Velocidad relativa)
+                return round(max(pesos), 1) if max(pesos) > 0 else 0.0
+
+            rm_sq = calcular_rm_final(p_sq, v_sq)
+            rm_pm = calcular_rm_final(p_pm, v_pm)
+
+            st.info(f"💡 **1RM Estimado Actual — Sentadilla:** {rm_sq} kg | **Peso Muerto:** {rm_pm} kg")
             st.markdown("---")
             comentarios = st.text_area("Observaciones Generales de la Valoración:")
             
