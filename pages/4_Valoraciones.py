@@ -141,8 +141,8 @@ with tab_nuevo:
             # ==========================================
             st.markdown("#### 🏋️‍♂️ 4. Estimación 1RM (5 Series de Carga y Velocidad)")
             st.markdown("<small style='color: #64748b;'>Introduce los kg y la velocidad medida del encoder para cada una de las 5 series progresivas.</small>", unsafe_allow_html=True)
-            
-            def capturar_5_series_dinamico(nombre_ejercicio, key_prefix):
+
+            def calcular_rm_en_tiempo_real(nombre_ejercicio, key_prefix):
                 st.markdown(f"**{nombre_ejercicio}**")
                 pesos_series = []
                 vels_series = []
@@ -156,7 +156,6 @@ with tab_nuevo:
                     pesos_series.append(p)
                     vels_series.append(v)
                 
-                # Cálculo directo en tiempo real basado en los inputs actuales
                 validas = [(pesos_series[i], vels_series[i]) for i in range(5) if vels_series[i] > 0 and pesos_series[i] > 0]
                 if validas:
                     p_max, v_max = max(validas, key=lambda x: x[0])
@@ -164,15 +163,15 @@ with tab_nuevo:
                 else:
                     rm_est = max(pesos_series) if max(pesos_series) > 0 else 0.0
                 
-                return rm_est, pesos_series, vels_series
+                return round(rm_est, 1)
 
             cr1, cr2 = st.columns(2)
             with cr1:
-                rm_sq, p_sq_list, v_sq_list = capturar_5_series_dinamico("Sentadilla", "sq")
-                st.info(f"💡 **1RM Estimado (Sentadilla):** {round(rm_sq, 1)} kg")
+                rm_sq = calcular_rm_en_tiempo_real("Sentadilla", "sq")
+                st.info(f"💡 **1RM Estimado (Sentadilla):** {rm_sq} kg")
             with cr2:
-                rm_pm, p_pm_list, v_pm_list = capturar_5_series_dinamico("Peso Muerto", "pm")
-                st.info(f"💡 **1RM Estimado (Peso Muerto):** {round(rm_pm, 1)} kg")
+                rm_pm = calcular_rm_en_tiempo_real("Peso Muerto", "pm")
+                st.info(f"💡 **1RM Estimado (Peso Muerto):** {rm_pm} kg")
 
             st.markdown("---")
             comentarios = st.text_area("Observaciones Generales de la Valoración:")
