@@ -337,10 +337,10 @@ with tab_informes:
                     f_rel_dl = round(dl_rm / peso_actual, 2) if peso_actual > 0 else 0
                     
                     crm1, crm2, crm3, crm4 = st.columns(4)
-                    with crm1: kpi_compacto("Estimación 1RM Sentadilla", f"{sq_rm} kg")
-                    with crm2: kpi_compacto("Estimación 1RM Peso Muerto", f"{dl_rm} kg")
-                    with crm3: kpi_compacto("Fuerza Relativa Sentadilla", f"{f_rel_sq}x Peso Corporal")
-                    with crm4: kpi_compacto("Fuerza Relativa Peso Muerto", f"{f_rel_dl}x Peso Corporal")
+                    with crm1: tarjeta_kpi("Estimación 1RM Sentadilla", f"{sq_rm} kg")
+                    with crm2: tarjeta_kpi("Estimación 1RM Peso Muerto", f"{dl_rm} kg")
+                    with crm3: tarjeta_kpi("Fuerza Relativa Sentadilla", f"{f_rel_sq}x Peso Corporal")
+                    with crm4: tarjeta_kpi("Fuerza Relativa Peso Muerto", f"{f_rel_dl}x Peso Corporal")
                     
                     dsi_adaptado = round(cmj_bi / f_rel_sq, 1) if f_rel_sq > 0 else 0
                     if dsi_adaptado > 25:
@@ -464,9 +464,9 @@ with tab_informes:
                         eslabon_txt = "Ninguno (Buen control inter-extremidades)"
                         
                     ce1, ce2, ce3 = st.columns(3)
-                    with ce1: kpi_compacto("Mejores Marcas (Pierna Derecha)", f"{puntos_der} / 10")
-                    with ce2: kpi_compacto("Mejores Marcas (Pierna Izquierda)", f"{puntos_izq} / 10")
-                    with ce3: kpi_compacto("Empates Bilaterales", f"{empates} / 10")
+                    with ce1: tarjeta_kpi("Mejores Marcas (Pierna Derecha)", f"{puntos_der} / 10")
+                    with ce2: tarjeta_kpi("Mejores Marcas (Pierna Izquierda)", f"{puntos_izq} / 10")
+                    with ce3: tarjeta_kpi("Empates Bilaterales", f"{empates} / 10")
                     
                     st.info(f"**Análisis de Tendencia Direccional:** {dom_txt} | **Eslabón Débil a compensar:** {eslabon_txt}")
                     # ====================================================
