@@ -14,45 +14,42 @@ cargar_datos_sistema()
 
 st.title("⚽ Gestión de Deportistas")
 
-tab_lista, tab_nuevo = st.tabs(["👥 Listado por Categorías", "➕ Registrar Nuevo Deportista"])
+tab_lista, tab_nuevo = st.tabs(["👥 Listado por Programas", "➕ Registrar Nuevo Deportista"])
 
 jugadores = st.session_state.get("jugadores", [])
 
 # ==========================================
-# PESTAÑA 1: LISTADO POR CATEGORÍAS Y PERFIL
+# PESTAÑA 1: LISTADO POR PROGRAMAS Y PERFIL
 # ==========================================
 with tab_lista:
-    st.markdown("### 📋 Plantilla de Deportistas por Categoría")
+    st.markdown("### 📋 Plantilla de Deportistas por Programa")
     
     if not jugadores:
         st.info("No hay deportistas registrados todavía.")
     else:
-        # Categorías solicitadas
-        categorias_edades = ["Benjamín", "Alevín", "Infantil", "Cadete", "Juvenil", "Sénior", "Sin Categoría"]
+        # Programas solicitados
+        programas = ["Academy", "Elite", "Promise"]
         
-        # Creamos pestañas dinámicas por categoría
-        tabs_cat = st.tabs(categorias_edades)
+        # Creamos pestañas dinámicas por programa
+        tabs_prog = st.tabs(programas)
         
-        for idx, cat in enumerate(categorias_edades):
-            with tabs_cat[idx]:
-                # Filtramos jugadores de esta categoría (manejando nulos o vacíos)
-                jugadores_cat = [
-                    j for j in jugadores 
-                    if (j.get("categoria_edad") == cat) or (cat == "Sin Categoría" and not j.get("categoria_edad"))
-                ]
+        for idx, prog in enumerate(programas):
+            with tabs_prog[idx]:
+                # Filtramos jugadores de este programa
+                jugadores_prog = [j for j in jugadores if j.get("programa") == prog]
                 
-                if not jugadores_cat:
-                    st.markdown(f"*No hay jugadores registrados en la categoría {cat}.*")
+                if not jugadores_prog:
+                    st.markdown(f"*No hay jugadores registrados en el programa {prog}.*")
                 else:
-                    st.markdown(f"#### Categoría: {cat} ({len(jugadores_cat)} jugadores)")
+                    st.markdown(f"#### Programa: {prog} ({len(jugadores_prog)} jugadores)")
                     
-                    for jugador in jugadores_cat:
+                    for jugador in jugadores_prog:
                         with st.container(border=True):
                             col_info1, col_info2, col_info3, col_btn = st.columns([2, 2, 2, 1])
                             
                             with col_info1:
                                 st.markdown(f"**👤 {jugador.get('nombre')}**")
-                                st.caption(f"Programa: {jugador.get('programa', 'N/D')}")
+                                st.caption(f"Categoría: {jugador.get('categoria_edad', 'N/D')}")
                                 
                             with col_info2:
                                 st.markdown(f"🏟️ **Club:** {jugador.get('club', 'No especificado')} ({jugador.get('categoria_club', 'N/D')})")
