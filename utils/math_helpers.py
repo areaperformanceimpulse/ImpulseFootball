@@ -1,28 +1,18 @@
 import streamlit as st
+import os
 
 def aplicar_estilos_base():
-    st.markdown("""
-        <style>
-            /* Títulos principales en azul corporativo */
-            h1, h2, h3 {
-                color: #09274e !important;
-                font-weight: 800 !important;
-            }
-            
-            /* Botones principales de Streamlit en verde corporativo */
-            .stButton > button {
-                background-color: #10833d !important;
-                color: white !important;
-                border-radius: 8px;
-                border: none;
-                font-weight: 600;
-            }
-            .stButton > button:hover {
-                background-color: #0d6d33 !important;
-                color: white !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+    """
+    Lee el archivo style.css puro y lo inyecta en la aplicación de Streamlit.
+    """
+    # Construimos la ruta absoluta al archivo style.css (que está en la misma carpeta)
+    css_path = os.path.join(os.path.dirname(__file__), "style.css")
+    
+    try:
+        with open(css_path, "r", encoding="utf-8") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning("No se encontró el archivo style.css en la carpeta Utils.")
 
 def safe_float(val):
     try:
@@ -35,14 +25,3 @@ def calcular_asimetria(der, izq):
     d, i = safe_float(der), safe_float(izq)
     if max(d, i) == 0: return 0.0
     return round((abs(d - i) / max(d, i)) * 100, 1)
-
-def aplicar_estilos_base():
-    st.markdown("""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-            html, body, [class*="css"] { font-family: 'Plus Jakarta Sans', sans-serif; }
-            .stApp { background-color: #ffffff; }
-            [data-testid="stSidebar"] { background-color: #0a0a0a; color: #ffffff; }
-            [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color: #ffffff !important; }
-        </style>
-    """, unsafe_allow_html=True)
