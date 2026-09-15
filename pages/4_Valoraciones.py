@@ -84,30 +84,66 @@ with tab_informes:
                     def badge_hq(val): return f"🟢 {val}" if val >= 0.6 else f"🔴 {val} (Déficit)"
                     def badge_adab(val): return f"🟢 {val}" if val >= 0.9 else f"🔴 {val} (Déficit)"
                     import plotly.express as px
-
+                   
                     def generar_grafico_radar(val_inicial, val_actual, peso_corp):
-                        def extraer_metricas(v):
+                        """
+                        Genera un gráfico de radar normalizado (0-100%) respecto a estándares óptimos en fútbol.
+                        """
+                        peso = peso_corp if peso_corp > 0 else 70.0
+                    
+                        def calcular_porcentajes_optimos(v):
                             if not v: return [0, 0, 0, 0, 0]
-                            mov_fms = sum([v.get('fms_mov_hombro_der',0), v.get('fms_elevacion_pierna_der',0)])
+                            
+                            # 1. Movilidad FMS (Óptimo = 12 pts)
+                            fms_mov = sum([
+                                v.get('fms_mov_hombro_der', 0), v.get('fms_mov_hombro_izq', 0),
+                                v.get('fms_elevacion_pierna_der', 0), v.get('fms_elevacion_pierna_izq', 0)
+                            ])
+                            p_mov = min(100, round((fms_mov / 12.0) * 100))
+                            
+                            # 2. Salto CMJ Bilateral (Óptimo = 50 cm)
                             cmj = v.get('cmj_bilateral', 0)
-                            p_act = v.get('peso_corporal', 70) if v.get('peso_corporal', 70) > 0 else 70
-                            iso_isq = (v.get('iso_flex_rodilla_der', 0) + v.get('iso_flex_rodilla_izq', 0)) / 2
-                            f_rel_isq = round(iso_isq / p_act, 2)
+                            p_cmj = min(100, round((cmj / 50.0) * 100))
+                            
+                            # 3. Fuerza Relativa Isquiosurales (Óptimo = 4.5 N/kg)
+                            isq_d = v.get('iso_flex_rodilla_der', 0)
+                            isq_i = v.get('iso_flex_rodilla_izq', 0)
+                            isq_prom = (isq_d + isq_i) / 2 if (isq_d > 0 or isq_i > 0) else 0
+                            f_rel_isq = isq_prom / peso
+                            p_isq = min(100, round((f_rel_isq / 4.5) * 100))
+                            
+                            # 4. Fuerza Relativa Sentadilla 1RM (Óptimo = 2.0x peso)
                             sq_rm = v.get('rm_sentadilla', 0)
-                            sh = (v.get('salto_horiz_der', 0) + v.get('salto_horiz_izq', 0)) / 2
-                            return [mov_fms * 3, cmj, f_rel_isq * 20, (sq_rm / p_act) * 25, sh / 3]
+                            f_rel_sq = sq_rm / peso
+                            p_sq = min(100, round((f_rel_sq / 2.0) * 100))
+                            
+                            # 5. Salto Horizontal Promedio (Óptimo = 240 cm)
+                            sh_d = v.get('salto_horiz_der', 0)
+                            sh_i = v.get('salto_horiz_izq', 0)
+                            sh_prom = (sh_d + sh_i) / 2 if (sh_d > 0 or sh_i > 0) else 0
+                            p_sh = min(100, round((sh_prom / 240.0) * 100))
+                            
+                            return [p_mov, p_cmj, p_isq, p_sq, p_sh]
                     
                         categorias = ['Movilidad FMS', 'Salto (CMJ)', 'F. Isquio (N/kg)', 'F. Sentadilla (Rel)', 'Salto Horiz.']
+                        
                         df_radar = pd.DataFrame({
                             'Métrica': categorias * 2,
-                            'Valor': extraer_metricas(val_inicial) + extraer_metricas(val_actual),
+                            'Valor': calcular_porcentajes_optimos(val_inicial) + calcular_porcentajes_optimos(val_actual),
                             'Test': ['Inicial (Base)'] * 5 + ['Actual'] * 5
                         })
                         
-                        fig = px.line_polar(df_radar, r='Valor', theta='Métrica', color='Test', line_close=True,
-                                            color_discrete_map={'Inicial (Base)': '#64748b', 'Actual': '#dc2626'})
-                        fig.update_traces(fill='toself')
-                        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), height=350, margin=dict(l=20, r=20, t=30, b=20))
+                        fig = px.line_polar(
+                            df_radar, r='Valor', theta='Métrica', color='Test', line_close=True,
+                            color_discrete_map={'Inicial (Base)': '#64748b', 'Actual': '#dc2626'}
+                        )
+                        fig.update_traces(fill='toself', opacity=0.4)
+                        # Al estar normalizado a porcentajes, el rango del gráfico va perfectamente de 0 a 100
+                        fig.update_layout(
+                            polar=dict(radialaxis=dict(visible=True, range=[0, 100])), 
+                            height=350, 
+                            margin=dict(l=20, r=20, t=30, b=20)
+                        )
                         return fig
                     
                     def generar_recomendaciones_automaticas(v_data):
