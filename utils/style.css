@@ -1,1 +1,31 @@
 
+def aplicar_estilos_base():
+    st.markdown("""
+        <style>
+            /* Colores corporativos globales */
+            :root {
+                --primary-color: #10833d; /* Verde corporativo */
+                --background-color: #f8fafc;
+                --text-color: #09274e;    /* Azul corporativo */
+            }
+            
+            /* Títulos principales en azul corporativo */
+            h1, h2, h3 {
+                color: #09274e !important;
+                font-weight: 800 !important;
+            }
+            
+            /* Botones principales de Streamlit con verde corporativo */
+            .stButton > button {
+                background-color: #10833d !important;
+                color: white !important;
+                border-radius: 8px;
+                border: none;
+                font-weight: 600;
+            }
+            .stButton > button:hover {
+                background-color: #0d6d33 !important;
+                color: white !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
