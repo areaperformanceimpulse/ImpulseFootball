@@ -378,9 +378,9 @@ with tab_informes:
                             else: cuadrante = "🔴 Déficit Global (Débil y Lento)"
                                 
                             fig = px.scatter(x=kgs, y=vels, labels={'x': 'Carga (kg)', 'y': 'Velocidad (m/s)'}, title=titulo)
-                            fig.update_traces(marker=dict(size=10, color='#10833d')
+                            fig.update_traces(marker=dict(size=10, color='#10833d'))
                             x_trend = np.linspace(min(kgs), max(kgs), 50)
-                            fig.add_scatter(x=x_trend, y=p(x_trend), mode='lines', name='Tendencia', line=dict(dash='dash', color='#09274e')))
+                            fig.add_scatter(x=x_trend, y=p(x_trend), mode='lines', name='Tendencia', line=dict(dash='dash', color='#09274e'))
                             fig.update_layout(showlegend=False, height=300, margin=dict(l=20, r=20, t=40, b=20))
                             
                             return fig, {"r2": r2, "v0": v0, "f0_kg": f0_kg, "cuadrante": cuadrante}
