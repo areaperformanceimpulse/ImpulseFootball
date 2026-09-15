@@ -83,7 +83,59 @@ with tab_informes:
 
                     def badge_hq(val): return f"🟢 {val}" if val >= 0.6 else f"🔴 {val} (Déficit)"
                     def badge_adab(val): return f"🟢 {val}" if val >= 0.9 else f"🔴 {val} (Déficit)"
+                    import plotly.express as px
 
+                    def generar_grafico_radar(val_inicial, val_actual, peso_corp):
+                        def extraer_metricas(v):
+                            if not v: return [0, 0, 0, 0, 0]
+                            mov_fms = sum([v.get('fms_mov_hombro_der',0), v.get('fms_elevacion_pierna_der',0)])
+                            cmj = v.get('cmj_bilateral', 0)
+                            p_act = v.get('peso_corporal', 70) if v.get('peso_corporal', 70) > 0 else 70
+                            iso_isq = (v.get('iso_flex_rodilla_der', 0) + v.get('iso_flex_rodilla_izq', 0)) / 2
+                            f_rel_isq = round(iso_isq / p_act, 2)
+                            sq_rm = v.get('rm_sentadilla', 0)
+                            sh = (v.get('salto_horiz_der', 0) + v.get('salto_horiz_izq', 0)) / 2
+                            return [mov_fms * 3, cmj, f_rel_isq * 20, (sq_rm / p_act) * 25, sh / 3]
+                    
+                        categorias = ['Movilidad FMS', 'Salto (CMJ)', 'F. Isquio (N/kg)', 'F. Sentadilla (Rel)', 'Salto Horiz.']
+                        df_radar = pd.DataFrame({
+                            'Métrica': categorias * 2,
+                            'Valor': extraer_metricas(val_inicial) + extraer_metricas(val_actual),
+                            'Test': ['Inicial (Base)'] * 5 + ['Actual'] * 5
+                        })
+                        
+                        fig = px.line_polar(df_radar, r='Valor', theta='Métrica', color='Test', line_close=True,
+                                            color_discrete_map={'Inicial (Base)': '#64748b', 'Actual': '#dc2626'})
+                        fig.update_traces(fill='toself')
+                        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), height=350, margin=dict(l=20, r=20, t=30, b=20))
+                        return fig
+                    
+                    def generar_recomendaciones_automaticas(v_data):
+                        alertas = []
+                        peso = v_data.get('peso_corporal', 70) if v.get('peso_corporal', 70) > 0 else 70
+                        isq_d = v_data.get('iso_flex_rodilla_der', 0)
+                        isq_i = v_data.get('iso_flex_rodilla_izq', 0)
+                        
+                        if (isq_d / peso) < 3.5 or (isq_i / peso) < 3.5:
+                            min_isq = round(min(isq_d / peso, isq_i / peso), 2)
+                            alertas.append(f"⚠️ **Déficit de fuerza en isquiosurales** ({min_isq} N/kg frente al umbral óptimo de 3.5 N/kg). **Pauta:** Priorizar trabajo excéntrico (Nordic Curl) y cadenas posteriores.")
+                    
+                        cmj_d = v_data.get('cmj_uni_der', 0)
+                        cmj_i = v_data.get('cmj_uni_izq', 0)
+                        if cmj_d > 0 and cmj_i > 0:
+                            max_cmj = max(cmj_d, cmj_i)
+                            min_cmj = min(cmj_d, cmj_i)
+                            asi_cmj = round(abs(max_cmj - min_cmj) / max_cmj * 100, 1)
+                            pierna_debil = "Derecha" if cmj_d < cmj_i else "Izquierda"
+                            if asi_cmj > 10:
+                                alertas.append(f"⚠️ **Asimetría unilateral de salto del {asi_cmj}%** con afectación en hemicuerpo {pierna_debil}. **Pauta:** Introducir bloques de fuerza unilateral y control motor específico.")
+                    
+                        if not alertas:
+                            st.success("🟢 **Perfil Físico Estable:** No se detectan déficits críticos ni riesgos lesionales destacados en los test evaluados.")
+                        else:
+                            st.markdown("#### 🤖 Pautas y Recomendaciones Automatizadas del Staff")
+                            for alerta in alertas:
+                                st.warning(alerta)
                     st.markdown("---")
                     
                     # ---------------------------------------------------------
@@ -369,7 +421,26 @@ with tab_informes:
                     with ce3: kpi_compacto("Empates Bilaterales", f"{empates} / 10")
                     
                     st.info(f"**Análisis de Tendencia Direccional:** {dom_txt} | **Eslabón Débil a compensar:** {eslabon_txt}")
-
+                    # ====================================================
+                    # 6. EVOLUCIÓN HISTÓRICA (RADAR) Y RECOMENDACIONES
+                    # ====================================================
+                    st.markdown("---")
+                    st.markdown("#### 🎯 6. Evolución Geométrica (Radar) y Pautas Clínicas")
+                    
+                    col_rad1, col_rad2 = st.columns([1, 1])
+                    
+                    with col_rad1:
+                        st.markdown("*Perfil Físico: Inicial vs Actual*")
+                        # Buscamos la primera valoración cronológica de este jugador en esta temporada como base
+                        vals_cronologicas = df_temp.sort_values(by="fecha", ascending=True)
+                        val_inicial_obj = vals_cronologicas.iloc[0].to_dict() if not vals_cronologicas.empty else v_data.to_dict()
+                        
+                        fig_radar = generar_grafico_radar(val_inicial_obj, v_data.to_dict(), peso_actual)
+                        st.plotly_chart(fig_radar, use_container_width=True)
+                        
+                    with col_rad2:
+                        st.markdown("*Diagnóstico y Recomendaciones Automáticas*")
+                        generar_recomendaciones_automaticas(v_data)
 # ==========================================
 # PESTAÑA 2: AÑADIR NUEVA VALORACIÓN
 # ==========================================
