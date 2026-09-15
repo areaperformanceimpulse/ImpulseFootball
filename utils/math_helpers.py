@@ -1,5 +1,29 @@
 import streamlit as st
 
+def aplicar_estilos_base():
+    st.markdown("""
+        <style>
+            /* Títulos principales en azul corporativo */
+            h1, h2, h3 {
+                color: #09274e !important;
+                font-weight: 800 !important;
+            }
+            
+            /* Botones principales de Streamlit en verde corporativo */
+            .stButton > button {
+                background-color: #10833d !important;
+                color: white !important;
+                border-radius: 8px;
+                border: none;
+                font-weight: 600;
+            }
+            .stButton > button:hover {
+                background-color: #0d6d33 !important;
+                color: white !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
 def safe_float(val):
     try:
         if val is None or val == "" or str(val).lower() == "nan": return 0.0
