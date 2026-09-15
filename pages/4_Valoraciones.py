@@ -134,7 +134,6 @@ with tab_informes:
                         })
                         
                         fig = px.line_polar(
-                        fig = px.line_polar(
                             df_radar, 
                             r='Valor', 
                             theta='Métrica', 
