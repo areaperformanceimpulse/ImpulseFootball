@@ -4,7 +4,7 @@ from utils.math_helpers import aplicar_estilos_base
 from datetime import date, datetime
 import pandas as pd
 
-st.set_page_config(page_title="Calendario - ImpulseFootball", page_icon="📅", layout="wide")
+st.set_page_config(page_title="Calendario", page_icon="📅", layout="wide")
 aplicar_estilos_base()
 
 if not st.session_state.get("autenticado", False):
@@ -15,7 +15,7 @@ cargar_datos_sistema()
 
 st.title("📅 Calendario y Planificación de Sesiones")
 
-tab_nueva, tab_visual, tab_historial = st.tabs(["➕ Programar Nueva Sesión", "🗓️ Vista Visual & Historial", "✏️ Modificar / Gestionar Sesión"])
+tab_nueva, tab_visual, tab_historial = st.tabs(["➕ Programar Nueva Sesión", "🗓️ Vista Visual", "✏️ Modificar / Gestionar Sesión"])
 
 jugadores = st.session_state.get("jugadores", [])
 sesiones = st.session_state.get("sesiones", [])
