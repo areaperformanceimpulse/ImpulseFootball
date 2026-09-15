@@ -690,7 +690,7 @@ with tab_reg:
         # 4. ELIMINACIÓN DE REGISTROS
         st.markdown("---")
         st.markdown("#### ⚙️ Gestión: Eliminar Registro")
-        opciones_eliminar = {row['id']: f"{row['Deportista']} - {row['Fecha']} (Val. {row['Nº Val.']})" for idx, row in df_filtrado.iterrows()}
+        opciones_eliminar = {row['id']: f"{row['Deportista']} - {row['fecha']} (Val. {row['numero_valoracion']})" for idx, row in df_filtrado.iterrows()}
         
         c_del1, c_del2 = st.columns([3, 1])
         with c_del1:
