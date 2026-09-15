@@ -32,64 +32,63 @@ with tab_nueva:
     if not jugadores:
         st.warning("No hay deportistas registrados en el sistema.")
     else:
-        with st.form("form_nueva_sesion"):
-            c1, c2, c3 = st.columns(3)
+        c1, c2, c3 = st.columns(3)
+        
+        with c1:
+            fecha_sesion = st.date_input("Fecha del Entrenamiento:", value=date.today())
+            hora_sesion = st.time_input("Hora de Inicio:", value=datetime.strptime("17:00", "%H:%M").time())
+            tipo_sesion = st.selectbox("Tipo de Sesión:", options=["Campo", "Gimnasio"])
             
-            with c1:
-                fecha_sesion = st.date_input("Fecha del Entrenamiento:", value=date.today())
-                hora_sesion = st.time_input("Hora de Inicio:", value=datetime.strptime("17:00", "%H:%M").time())
-                tipo_sesion = st.selectbox("Tipo de Sesión:", options=["Campo", "Gimnasio"])
-                
-            with c2:
-                programa_sel = st.selectbox("Programa de Entrenamiento:", options=["Academy", "Elite", "Promise"])
-                entrenador_sel = st.selectbox("Entrenador Responsable:", options=lista_entrenadores)
-                
-                # Filtro dinámico de jugadores según el programa
-                jugadores_filtrados = [j for j in jugadores if j.get("programa") == programa_sel]
-                nombres_filtrados = [j["nombre"] for j in jugadores_filtrados]
-                
-            with c3:
-                comentarios = st.text_area("Foco de la Sesión / Observaciones:", height=135, placeholder="Ej: Trabajo de fuerza explosiva y transiciones...")
+        with c2:
+            # Al estar fuera de un form, esto recargará la página al cambiar y actualizará los jugadores abajo
+            programa_sel = st.selectbox("Programa de Entrenamiento:", options=["Academy", "Elite", "Promise"])
+            entrenador_sel = st.selectbox("Entrenador Responsable:", options=lista_entrenadores)
+            
+            # Filtro dinámico inmediato
+            jugadores_filtrados = [j for j in jugadores if j.get("programa") == programa_sel]
+            nombres_filtrados = [j["nombre"] for j in jugadores_filtrados]
+            
+        with c3:
+            comentarios = st.text_area("Foco de la Sesión / Observaciones:", height=135, placeholder="Ej: Trabajo de fuerza explosiva y transiciones...")
 
-            st.markdown("---")
-            asistentes = st.multiselect(
-                f"Deportistas Convocados ({len(nombres_filtrados)} disponibles en {programa_sel}):", 
-                options=nombres_filtrados,
-                default=nombres_filtrados # Por defecto todos los del grupo
-            )
-            
-            submit_sesion = st.form_submit_button("💾 Guardar y Validar Sesión", use_container_width=True)
-            
-            if submit_sesion:
-                if not asistentes:
-                    st.error("Debes seleccionar al menos un deportista para la sesión.")
-                else:
-                    # VALIDACIÓN ANTI-SOLAPES DE ENTRENADOR
-                    conflicto_entrenador = False
-                    for s in sesiones:
-                        if s.get("fecha") == str(fecha_sesion) and s.get("hora_inicio") == str(hora_sesion) and s.get("entrenador") == entrenador_sel:
-                            conflicto_entrenador = True
-                            break
-                    
-                    if conflicto_entrenador:
-                        st.warning(f"⚠️ **Aviso de Solape:** El entrenador '{entrenador_sel}' ya tiene asignada otra sesión el {fecha_sesion} a las {hora_sesion}. La sesión se guardará igualmente, revísalo si es necesario.")
-                    
-                    try:
-                        nueva_sesion = {
-                            "fecha": str(fecha_sesion),
-                            "hora_inicio": str(hora_sesion),
-                            "tipo": tipo_sesion,
-                            "programa": programa_sel,
-                            "entrenador": entrenador_sel,
-                            "asistentes": asistentes,
-                            "comentarios": comentarios
-                        }
-                        supabase.table("sesiones_entrenamiento").insert(nueva_sesion).execute()
-                        cargar_datos_sistema()
-                        st.success(f"¡Sesión de {tipo_sesion} programada correctamente para el {fecha_sesion} a las {hora_sesion}!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error al guardar la sesión: {e}")
+        st.markdown("---")
+        asistentes = st.multiselect(
+            f"Deportistas Convocados ({len(nombres_filtrados)} disponibles en {programa_sel}):", 
+            options=nombres_filtrados,
+            default=nombres_filtrados # Por defecto todos los del grupo
+        )
+        
+        st.markdown("")
+        if st.button("💾 Guardar y Validar Sesión", use_container_width=True):
+            if not asistentes:
+                st.error("Debes seleccionar al menos un deportista para la sesión.")
+            else:
+                # VALIDACIÓN ANTI-SOLAPES DE ENTRENADOR
+                conflicto_entrenador = False
+                for s in sesiones:
+                    if s.get("fecha") == str(fecha_sesion) and s.get("hora_inicio") == str(hora_sesion) and s.get("entrenador") == entrenador_sel:
+                        conflicto_entrenador = True
+                        break
+                
+                if conflicto_entrenador:
+                    st.warning(f"⚠️ **Aviso de Solape:** El entrenador '{entrenador_sel}' ya tiene asignada otra sesión el {fecha_sesion} a las {hora_sesion}. La sesión se guardará igualmente.")
+                
+                try:
+                    nueva_sesion = {
+                        "fecha": str(fecha_sesion),
+                        "hora_inicio": str(hora_sesion),
+                        "tipo": tipo_sesion,
+                        "programa": programa_sel,
+                        "entrenador": entrenador_sel,
+                        "asistentes": asistentes,
+                        "comentarios": comentarios
+                    }
+                    supabase.table("sesiones_entrenamiento").insert(nueva_sesion).execute()
+                    cargar_datos_sistema()
+                    st.success(f"¡Sesión de {tipo_sesion} programada correctamente para el {fecha_sesion} a las {hora_sesion}!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al guardar la sesión: {e}")
 
 # ==========================================
 # PESTAÑA 2: VISTA VISUAL & HISTORIAL
