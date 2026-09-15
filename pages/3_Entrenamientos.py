@@ -85,7 +85,7 @@ with tab_historial:
                             "comentarios": f_comentarios
                         }
                         supabase.table("sesiones_entrenamiento").update(datos_actualizados).eq("id", sesion_editar_id).execute()
-                        cargar_datos_sistema()
+                        cargar_datos_sistema(force_refresh=True)
                         st.success("¡Sesión actualizada correctamente!")
                         st.rerun()
                     except Exception as e:
