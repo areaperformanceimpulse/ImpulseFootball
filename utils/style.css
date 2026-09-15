@@ -1,31 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
 
-def aplicar_estilos_base():
-    st.markdown("""
-        <style>
-            /* Colores corporativos globales */
-            :root {
-                --primary-color: #10833d; /* Verde corporativo */
-                --background-color: #f8fafc;
-                --text-color: #09274e;    /* Azul corporativo */
-            }
-            
-            /* Títulos principales en azul corporativo */
-            h1, h2, h3 {
-                color: #09274e !important;
-                font-weight: 800 !important;
-            }
-            
-            /* Botones principales de Streamlit con verde corporativo */
-            .stButton > button {
-                background-color: #10833d !important;
-                color: white !important;
-                border-radius: 8px;
-                border: none;
-                font-weight: 600;
-            }
-            .stButton > button:hover {
-                background-color: #0d6d33 !important;
-                color: white !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+/* Variables y colores corporativos globales */
+:root {
+    --primary-color: #10833d; /* Verde corporativo */
+    --background-color: #ffffff;
+    --text-color: #09274e;    /* Azul corporativo */
+}
+
+/* Tipografía global */
+html, body, [class*="css"] {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.stApp {
+    background-color: var(--background-color);
+}
+
+/* Títulos principales en azul corporativo */
+h1, h2, h3 {
+    color: var(--text-color) !important;
+    font-weight: 800 !important;
+}
+
+/* Botones principales de Streamlit con verde corporativo */
+.stButton > button {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+}
+
+.stButton > button:hover {
+    background-color: #0d6d33 !important;
+    color: white !important;
+}
+
+/* Personalización de la barra lateral (Sidebar) */
+[data-testid="stSidebar"] {
+    background-color: #0a0a0a;
+    color: #ffffff;
+}
+
+[data-testid="stSidebar"] h1, 
+[data-testid="stSidebar"] h2, 
+[data-testid="stSidebar"] label, 
+[data-testid="stSidebar"] p {
+    color: #ffffff !important;
+}
