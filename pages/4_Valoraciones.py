@@ -112,7 +112,8 @@ with tab_informes:
                     
                     def generar_recomendaciones_automaticas(v_data):
                         alertas = []
-                        peso = v_data.get('peso_corporal', 70) if v.get('peso_corporal', 70) > 0 else 70
+                        # CORREGIDO: Usamos v_data en lugar de v
+                        peso = v_data.get('peso_corporal', 70) if v_data.get('peso_corporal', 70) > 0 else 70
                         isq_d = v_data.get('iso_flex_rodilla_der', 0)
                         isq_i = v_data.get('iso_flex_rodilla_izq', 0)
                         
@@ -136,6 +137,7 @@ with tab_informes:
                             st.markdown("#### 🤖 Pautas y Recomendaciones Automatizadas del Staff")
                             for alerta in alertas:
                                 st.warning(alerta)
+                                
                     st.markdown("---")
                     
                     # ---------------------------------------------------------
