@@ -17,14 +17,353 @@ cargar_datos_sistema()
 
 st.title("📊 Valoraciones Condicionales (Gimnasio)")
 
-tab_nuevo, tab_informes, tab_reg = st.tabs(["➕ Añadir Nueva Valoración", "📈 Informes de valoraciones", "📋 Tabla de registros"])
+# 1. REORDEN DE PESTAÑAS: Informes ahora es la primera
+tab_informes, tab_nuevo, tab_reg = st.tabs(["📈 Informes de valoraciones", "➕ Añadir Nueva Valoración", "📋 Tabla de registros"])
 
 jugadores = st.session_state.get("jugadores", [])
 valoraciones = st.session_state.get("valoraciones", [])
 mapa_jugadores = {j['id']: j['nombre'] for j in jugadores}
 
 # ==========================================
-# PESTAÑA 1: AÑADIR NUEVA VALORACIÓN
+# PESTAÑA 1: INFORMES DE VALORACIONES (PÁGINA LIMPIA)
+# ==========================================
+with tab_informes:
+    st.markdown("### 📈 Informes de Valoraciones y Perfil Individual")
+    
+    if not jugadores or not valoraciones:
+        st.info("No hay datos suficientes para mostrar informes.")
+    else:
+        # Selectores en la parte superior
+        cf1, cf2, cf3 = st.columns(3)
+        with cf1: jug_sel_prog = st.selectbox("Deportista:", options=list(mapa_jugadores.keys()), format_func=lambda x: mapa_jugadores[x])
+        
+        vals_jugador = [v for v in valoraciones if v.get('jugador_id') == jug_sel_prog]
+        
+        if not vals_jugador:
+            st.warning("Este deportista todavía no tiene valoraciones registradas.")
+        else:
+            df_pj = pd.DataFrame(vals_jugador)
+            temporadas = df_pj['temporada'].dropna().unique().tolist()
+            
+            with cf2: temp_sel = st.selectbox("Temporada:", options=temporadas)
+            df_temp = df_pj[df_pj['temporada'] == temp_sel]
+            
+            if df_temp.empty:
+                st.warning("No hay valoraciones en esta temporada.")
+            else:
+                dicc_vals = {row['id']: f"{row['numero_valoracion']} ({row['fecha']})" for idx, row in df_temp.iterrows()}
+                
+                # Selector con opción nula por defecto para mantener la página limpia
+                with cf3: 
+                    val_sel_id = st.selectbox("Número de Valoración:", options=[None] + list(dicc_vals.keys()), format_func=lambda x: dicc_vals[x] if x else "Seleccione para generar...")
+                
+                if val_sel_id is None:
+                    st.info("👆 Selecciona una valoración en el menú superior para desplegar el informe exhaustivo.")
+                else:
+                    # ====================================================
+                    # GENERACIÓN DEL INFORME (Se ejecuta solo si hay selección)
+                    # ====================================================
+                    v_data = df_temp[df_temp['id'] == val_sel_id].iloc[0]
+                    peso_actual = safe_float(v_data.get('peso_corporal'))
+                    if peso_actual == 0: peso_actual = 70.0 
+                    
+                    def kpi_compacto(titulo, valor):
+                        st.markdown(f"<div style='line-height: 1.2; margin-bottom: 12px;'><span style='font-size: 0.80em; color: #64748b; font-weight: 600;'>{titulo}</span><br><span style='font-size: 1.2em; font-weight: 800;'>{valor}</span></div>", unsafe_allow_html=True)
+
+                    # Función de asimetría que identifica la pierna débil
+                    def badge_asi_detallado(val, der, izq):
+                        if val < 10: 
+                            return f"🟢 {val}% (Óptimo)"
+                        else:
+                            pierna_debil = "Derecha" if safe_float(der) < safe_float(izq) else ("Izquierda" if safe_float(izq) < safe_float(der) else "Ninguna")
+                            if val <= 15: 
+                                return f"🟡 {val}% (Precaución | Débil: {pierna_debil})"
+                            else: 
+                                return f"🔴 {val}% (Riesgo | Débil: {pierna_debil})"
+
+                    def badge_hq(val): return f"🟢 {val}" if val >= 0.6 else f"🔴 {val} (Déficit)"
+                    def badge_adab(val): return f"🟢 {val}" if val >= 0.9 else f"🔴 {val} (Déficit)"
+
+                    st.markdown("---")
+                    
+                    # ---------------------------------------------------------
+                    # 1. MOVILIDAD Y ESTABILIDAD
+                    # ---------------------------------------------------------
+                    st.markdown("#### 🤸 1. Análisis de Movilidad y Estabilidad")
+                    
+                    cm1, cm2, cm3, cm4, cm5 = st.columns(5)
+                    with cm1: kpi_compacto("FMS 1: Sentadilla profunda", v_data.get('fms_sentadilla', 0))
+                    with cm2: kpi_compacto("FMS 2: Paso Obstáculo (D)", v_data.get('fms_paso_obstaculo_der', 0))
+                    with cm3: kpi_compacto("FMS 2: Paso Obstáculo (I)", v_data.get('fms_paso_obstaculo_izq', 0))
+                    with cm4: kpi_compacto("FMS 3: Zancada en línea (D)", v_data.get('fms_zancada_der', 0))
+                    with cm5: kpi_compacto("FMS 3: Zancada en línea (I)", v_data.get('fms_zancada_izq', 0))
+                    
+                    cm6, cm7, cm8, cm9, cm10, cm11 = st.columns(6)
+                    with cm6: kpi_compacto("FMS 4: Movilidad Hombro (D)", v_data.get('fms_mov_hombro_der', 0))
+                    with cm7: kpi_compacto("FMS 4: Movilidad Hombro (I)", v_data.get('fms_mov_hombro_izq', 0))
+                    with cm8: kpi_compacto("FMS 5: Elevación Pierna (D)", v_data.get('fms_elevacion_pierna_der', 0))
+                    with cm9: kpi_compacto("FMS 5: Elevación Pierna (I)", v_data.get('fms_elevacion_pierna_izq', 0))
+                    with cm10: kpi_compacto("FMS 6: Estabilidad Tronco", v_data.get('fms_estabilidad_tronco', 0))
+                    with cm11: kpi_compacto("FMS 7: Estabilidad Rotatoria", v_data.get('fms_estabilidad_rotatoria', 0))
+
+                    mov_total = sum([v_data.get('fms_mov_hombro_der',0), v_data.get('fms_mov_hombro_izq',0), v_data.get('fms_elevacion_pierna_der',0), v_data.get('fms_elevacion_pierna_izq',0)])
+                    ctrl_total = sum([v_data.get('fms_sentadilla',0), v_data.get('fms_estabilidad_tronco',0), v_data.get('fms_estabilidad_rotatoria',0), v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0), v_data.get('fms_zancada_der',0), v_data.get('fms_zancada_izq',0)])
+                    
+                    if mov_total >= 10: mov_badge = "🟢 Óptimo"
+                    elif mov_total >= 8: mov_badge = "🟡 Aceptable"
+                    else: mov_badge = "🔴 Deficiente"
+                    
+                    if ctrl_total >= 16: ctrl_badge = "🟢 Óptimo"
+                    elif ctrl_total >= 14: ctrl_badge = "🟡 Aceptable"
+                    else: ctrl_badge = "🔴 Deficiente"
+
+                    c_fms1, c_fms2 = st.columns(2)
+                    c_fms1.info(f"**Clúster Movilidad:** {mov_total} / 12 pts | {mov_badge}\n\n*(Valora la flexibilidad y longitud del tejido)*")
+                    c_fms2.info(f"**Clúster Control Motor:** {ctrl_total} / 21 pts | {ctrl_badge}\n\n*(Valora la estabilización activa de las articulaciones)*")
+
+                    st.markdown("---")
+
+                    # ---------------------------------------------------------
+                    # 2. RENDIMIENTO EN SALTO Y VECTORES
+                    # ---------------------------------------------------------
+                    st.markdown("#### 🦘 2. Rendimiento en Salto y Vectores")
+                    
+                    cs1, cs2, cs3, cs4, cs5 = st.columns(5)
+                    with cs1: kpi_compacto("Salto Vertical Bilateral", f"{v_data.get('cmj_bilateral', 0)} cm")
+                    with cs2: kpi_compacto("Salto Vertical Unilateral (D)", f"{v_data.get('cmj_uni_der', 0)} cm")
+                    with cs3: kpi_compacto("Salto Vertical Unilateral (I)", f"{v_data.get('cmj_uni_izq', 0)} cm")
+                    with cs4: kpi_compacto("Salto Horizontal (D)", f"{v_data.get('salto_horiz_der', 0)} cm")
+                    with cs5: kpi_compacto("Salto Horizontal (I)", f"{v_data.get('salto_horiz_izq', 0)} cm")
+                    
+                    cmj_d, cmj_i = v_data.get('cmj_uni_der', 0), v_data.get('cmj_uni_izq', 0)
+                    asi_cmj = calcular_asimetria(cmj_d, cmj_i)
+                    
+                    cmj_bi = safe_float(v_data.get('cmj_bilateral', 0))
+                    cmj_uni_sum = safe_float(cmj_d) + safe_float(cmj_i)
+                    dbl = round(100 * (cmj_bi / cmj_uni_sum) - 100, 1) if cmj_uni_sum > 0 else 0
+                    
+                    if dbl < -10:
+                        dbl_txt = f"🟢 {dbl}% (Óptimo - Perfil unilateral de alta eficiencia para fútbol)"
+                    elif dbl < 0:
+                        dbl_txt = f"🟡 {dbl}% (Adecuado - Eficiencia unilateral estándar)"
+                    else:
+                        dbl_txt = f"🔴 {dbl}% (Déficit Unilateral - Riesgo de lentitud en sprints y recortes)"
+                    
+                    sh_promedio = (safe_float(v_data.get('salto_horiz_der', 0)) + safe_float(v_data.get('salto_horiz_izq', 0))) / 2
+                    cmj_uni_promedio = cmj_uni_sum / 2
+                    ratio_vectores = round(sh_promedio / cmj_uni_promedio, 2) if cmj_uni_promedio > 0 else 0
+                    
+                    if ratio_vectores > 4.5:
+                        perfil_vector = "🏃 Dominancia Horizontal (Perfil Acelerador - 1ºs metros)"
+                    elif ratio_vectores > 0 and ratio_vectores < 3.5:
+                        perfil_vector = "🚀 Dominancia Vertical (Perfil Aéreo y Velocidad Punta)"
+                    elif ratio_vectores >= 3.5 and ratio_vectores <= 4.5:
+                        perfil_vector = "⚖️ Perfil Vectorial Equilibrado"
+                    else:
+                        perfil_vector = "Datos insuficientes"
+                    
+                    ca1, ca2, ca3 = st.columns(3)
+                    ca1.info(f"**Asimetría Vertical:** {badge_asi_detallado(asi_cmj, cmj_d, cmj_i)}")
+                    ca2.info(f"**Déficit Bilateral (DBL):**\n\n{dbl_txt}")
+                    ca3.info(f"**Teoría de Vectores (Ratio H/V):** {ratio_vectores}\n\n{perfil_vector}")
+
+                    st.markdown("---")
+
+                    # ---------------------------------------------------------
+                    # 3. FUERZA MÁXIMA ISOMÉTRICA
+                    # ---------------------------------------------------------
+                    st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica y Fuerza Relativa")
+                    
+                    ci1, ci2, ci3, ci4, ci5, ci6, ci7, ci8 = st.columns(8)
+                    with ci1: kpi_compacto("Extensión Cuád (D)", f"{v_data.get('iso_ext_rodilla_der', 0)} N")
+                    with ci2: kpi_compacto("Extensión Cuád (I)", f"{v_data.get('iso_ext_rodilla_izq', 0)} N")
+                    with ci3: kpi_compacto("Flexión Isquio (D)", f"{v_data.get('iso_flex_rodilla_der', 0)} N")
+                    with ci4: kpi_compacto("Flexión Isquio (I)", f"{v_data.get('iso_flex_rodilla_izq', 0)} N")
+                    with ci5: kpi_compacto("Aducción (D)", f"{v_data.get('iso_add_cadera_der', 0)} N")
+                    with ci6: kpi_compacto("Aducción (I)", f"{v_data.get('iso_add_cadera_izq', 0)} N")
+                    with ci7: kpi_compacto("Abducción (D)", f"{v_data.get('iso_abd_cadera_der', 0)} N")
+                    with ci8: kpi_compacto("Abducción (I)", f"{v_data.get('iso_abd_cadera_izq', 0)} N")
+                    
+                    ext_d, ext_i = v_data.get('iso_ext_rodilla_der', 0), v_data.get('iso_ext_rodilla_izq', 0)
+                    flx_d, flx_i = v_data.get('iso_flex_rodilla_der', 0), v_data.get('iso_flex_rodilla_izq', 0)
+                    
+                    asi_ext = calcular_asimetria(ext_d, ext_i)
+                    asi_flx = calcular_asimetria(flx_d, flx_i)
+                    
+                    cai1, cai2 = st.columns(2)
+                    cai1.info(f"**Asimetría Extensión de Cuádriceps:** {badge_asi_detallado(asi_ext, ext_d, ext_i)}")
+                    cai2.info(f"**Asimetría Flexión de Isquiosurales:** {badge_asi_detallado(asi_flx, flx_d, flx_i)}")
+                    
+                    ratio_hq_d = round(safe_float(flx_d) / safe_float(ext_d), 2) if safe_float(ext_d) > 0 else 0
+                    ratio_hq_i = round(safe_float(flx_i) / safe_float(ext_i), 2) if safe_float(ext_i) > 0 else 0
+                    
+                    add_d, abd_d = v_data.get('iso_add_cadera_der', 0), v_data.get('iso_abd_cadera_der', 0)
+                    add_i, abd_i = v_data.get('iso_add_cadera_izq', 0), v_data.get('iso_abd_cadera_izq', 0)
+                    ratio_adab_d = round(safe_float(add_d) / safe_float(abd_d), 2) if safe_float(abd_d) > 0 else 0
+                    ratio_adab_i = round(safe_float(add_i) / safe_float(abd_i), 2) if safe_float(abd_i) > 0 else 0
+
+                    f_rel_flx_d = round(safe_float(flx_d) / peso_actual, 2) if peso_actual > 0 else 0
+                    f_rel_flx_i = round(safe_float(flx_i) / peso_actual, 2) if peso_actual > 0 else 0
+                    def badge_nkg(val): return f"🟢 {val} N/kg" if val >= 3.5 else f"🔴 {val} N/kg (Debilidad base)"
+                    
+                    st.markdown("**Ratios Clínicos y Fuerza Relativa Isométrica**")
+                    cr1, cr2, cr3, cr4 = st.columns(4)
+                    with cr1: st.info(f"**Isq/Cuád (D):**\n{badge_hq(ratio_hq_d)}")
+                    with cr2: st.info(f"**Isq/Cuád (I):**\n{badge_hq(ratio_hq_i)}")
+                    with cr3: st.info(f"**F. Relativa Isquio (D):**\n{badge_nkg(f_rel_flx_d)}\n*(Óptimo > 3.5 N/kg)*")
+                    with cr4: st.info(f"**F. Relativa Isquio (I):**\n{badge_nkg(f_rel_flx_i)}\n*(Óptimo > 3.5 N/kg)*")
+
+                    c_adab1, c_adab2 = st.columns(2)
+                    c_adab1.info(f"**Aductores / Abductores (D):** {badge_adab(ratio_adab_d)}")
+                    c_adab2.info(f"**Aductores / Abductores (I):** {badge_adab(ratio_adab_i)}")
+
+                    st.markdown("---")
+
+                    # ---------------------------------------------------------
+                    # 4. FUERZA MÁXIMA Y PERFIL F-V
+                    # ---------------------------------------------------------
+                    st.markdown("#### 🏋️‍♂️ 4. Fuerza Máxima, Perfil F-V y DSI")
+                    sq_rm = safe_float(v_data.get('rm_sentadilla'))
+                    dl_rm = safe_float(v_data.get('rm_peso_muerto'))
+                    f_rel_sq = round(sq_rm / peso_actual, 2) if peso_actual > 0 else 0
+                    f_rel_dl = round(dl_rm / peso_actual, 2) if peso_actual > 0 else 0
+                    
+                    crm1, crm2, crm3, crm4 = st.columns(4)
+                    with crm1: kpi_compacto("Estimación 1RM Sentadilla", f"{sq_rm} kg")
+                    with crm2: kpi_compacto("Estimación 1RM Peso Muerto", f"{dl_rm} kg")
+                    with crm3: kpi_compacto("Fuerza Relativa Sentadilla", f"{f_rel_sq}x Peso Corporal")
+                    with crm4: kpi_compacto("Fuerza Relativa Peso Muerto", f"{f_rel_dl}x Peso Corporal")
+                    
+                    dsi_adaptado = round(cmj_bi / f_rel_sq, 1) if f_rel_sq > 0 else 0
+                    if dsi_adaptado > 25:
+                        diag_dsi = "🔴 Déficit de Fuerza (Alto CMJ, base débil. Priorizar Sentadilla pesada)"
+                    elif dsi_adaptado > 0 and dsi_adaptado < 18:
+                        diag_dsi = "🟡 Déficit de Potencia (Fuerte pero lento. Priorizar Pliometría/Balísticos)"
+                    elif dsi_adaptado >= 18 and dsi_adaptado <= 25:
+                        diag_dsi = "🟢 Transferencia Óptima (Equilibrio Fuerza-Potencia)"
+                    else:
+                        diag_dsi = "Datos insuficientes"
+                        
+                    st.info(f"**Índice de Fuerza Dinámica Adaptado (DSI):** {dsi_adaptado}\n\n*Diagnóstico:* {diag_dsi}")
+
+                    def analizar_perfil_fv(datos_json, titulo, peso_corp):
+                        if not datos_json or not isinstance(datos_json, dict): return None, None
+                        kgs = np.array([k for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0])
+                        vels = np.array([v for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0])
+                        
+                        if len(kgs) > 1:
+                            z = np.polyfit(kgs, vels, 1)
+                            p = np.poly1d(z)
+                            slope, intercept = z[0], z[1]
+                            
+                            ss_res = np.sum((vels - p(kgs))**2)
+                            ss_tot = np.sum((vels - np.mean(vels))**2)
+                            r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+                            
+                            v0 = intercept
+                            f0_kg = -intercept / slope if slope < 0 else 0
+                            f0_rel = f0_kg / peso_corp if peso_corp > 0 else 0
+                            
+                            if f0_rel >= 2.2 and v0 >= 1.3: cuadrante = "🟢 Perfil Óptimo (Fuerte y Rápido)"
+                            elif f0_rel < 2.2 and v0 >= 1.3: cuadrante = "🟡 Déficit de Fuerza (Rápido pero Débil)"
+                            elif f0_rel >= 2.2 and v0 < 1.3: cuadrante = "🟡 Déficit de Velocidad (Fuerte pero Lento)"
+                            else: cuadrante = "🔴 Déficit Global (Débil y Lento)"
+                                
+                            fig = px.scatter(x=kgs, y=vels, labels={'x': 'Carga (kg)', 'y': 'Velocidad (m/s)'}, title=titulo)
+                            fig.update_traces(marker=dict(size=10, color='#dc2626'))
+                            x_trend = np.linspace(min(kgs), max(kgs), 50)
+                            fig.add_scatter(x=x_trend, y=p(x_trend), mode='lines', name='Tendencia', line=dict(dash='dash', color='#64748b'))
+                            fig.update_layout(showlegend=False, height=300, margin=dict(l=20, r=20, t=40, b=20))
+                            
+                            return fig, {"r2": r2, "v0": v0, "f0_kg": f0_kg, "cuadrante": cuadrante}
+                        return None, None
+
+                    p_sq_data = v_data.get('perfil_sentadilla', {})
+                    p_pm_data = v_data.get('perfil_peso_muerto', {})
+                    
+                    fig_sq, stats_sq = analizar_perfil_fv(p_sq_data, "Perfil F-V Sentadilla", peso_actual)
+                    fig_pm, stats_pm = analizar_perfil_fv(p_pm_data, "Perfil F-V Peso Muerto", peso_actual)
+
+                    if fig_sq or fig_pm:
+                        c_fig1, c_fig2 = st.columns(2)
+                        with c_fig1:
+                            if fig_sq:
+                                st.plotly_chart(fig_sq, use_container_width=True)
+                                fiabilidad_sq = "🟢 Excelente" if stats_sq['r2'] >= 0.95 else ("🟡 Aceptable" if stats_sq['r2'] >= 0.90 else "🔴 Pobre (Falta intención)")
+                                st.info(f"**Diagnóstico SQ:** {stats_sq['cuadrante']}\n\n**V0 Teórica:** {round(stats_sq['v0'], 2)} m/s | **F0 Teórica:** {round(stats_sq['f0_kg'], 1)} kg\n\n**Fiabilidad del test ($R^2$):** {round(stats_sq['r2'], 3)} ({fiabilidad_sq})")
+                        with c_fig2:
+                            if fig_pm:
+                                st.plotly_chart(fig_pm, use_container_width=True)
+                                fiabilidad_pm = "🟢 Excelente" if stats_pm['r2'] >= 0.95 else ("🟡 Aceptable" if stats_pm['r2'] >= 0.90 else "🔴 Pobre (Falta intención)")
+                                st.info(f"**Diagnóstico PM:** {stats_pm['cuadrante']}\n\n**V0 Teórica:** {round(stats_pm['v0'], 2)} m/s | **F0 Teórica:** {round(stats_pm['f0_kg'], 1)} kg\n\n**Fiabilidad del test ($R^2$):** {round(stats_pm['r2'], 3)} ({fiabilidad_pm})")
+
+                    if sq_rm > 0 or dl_rm > 0:
+                        cz1, cz2 = st.columns(2)
+                        with cz1:
+                            st.markdown("*Zonas de Carga de Ejercicios Básicos*")
+                            df_zonas = pd.DataFrame({
+                                "Intensidad": ["100% (1RM)", "90%", "80%", "70%", "60%"],
+                                "Sentadilla (kg)": [sq_rm, round(sq_rm*0.9,1), round(sq_rm*0.8,1), round(sq_rm*0.7,1), round(sq_rm*0.6,1)],
+                                "Peso Muerto (kg)": [dl_rm, round(dl_rm*0.9,1), round(dl_rm*0.8,1), round(dl_rm*0.7,1), round(dl_rm*0.6,1)]
+                            })
+                            st.dataframe(df_zonas, hide_index=True)
+                        with cz2:
+                            st.markdown("*Estimación para Ejercicios Accesorios*")
+                            df_acc = pd.DataFrame({
+                                "Ejercicio Accesorio": ["Empuje de Cadera", "Peso Muerto Asimétrico", "Sentadilla Búlgara", "Zancada", "PM Rumano Unilateral"],
+                                "Estimación (kg)": [
+                                    round(sq_rm * 1.20, 1), round(dl_rm * 0.70, 1),
+                                    round(sq_rm * 0.50, 1), round(sq_rm * 0.45, 1),
+                                    round(dl_rm * 0.45, 1)
+                                ]
+                            })
+                            st.dataframe(df_acc, hide_index=True)
+
+                    st.markdown("---")
+                    
+                    # ---------------------------------------------------------
+                    # 5. ASIMETRÍA DIRECCIONAL GLOBAL
+                    # ---------------------------------------------------------
+                    st.markdown("#### 🧭 5. Asimetría Direccional Global (El Eslabón Débil)")
+                    
+                    puntos_der, puntos_izq, empates = 0, 0, 0
+                    pruebas_uni = [
+                        (v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0)),
+                        (v_data.get('fms_zancada_der',0), v_data.get('fms_zancada_izq',0)),
+                        (v_data.get('fms_mov_hombro_der',0), v_data.get('fms_mov_hombro_izq',0)),
+                        (v_data.get('fms_elevacion_pierna_der',0), v_data.get('fms_elevacion_pierna_izq',0)),
+                        (v_data.get('cmj_uni_der',0), v_data.get('cmj_uni_izq',0)),
+                        (v_data.get('salto_horiz_der',0), v_data.get('salto_horiz_izq',0)),
+                        (v_data.get('iso_ext_rodilla_der',0), v_data.get('iso_ext_rodilla_izq',0)),
+                        (v_data.get('iso_flex_rodilla_der',0), v_data.get('iso_flex_rodilla_izq',0)),
+                        (v_data.get('iso_add_cadera_der',0), v_data.get('iso_add_cadera_izq',0)),
+                        (v_data.get('iso_abd_cadera_der',0), v_data.get('iso_abd_cadera_izq',0))
+                    ]
+                    
+                    for der, izq in pruebas_uni:
+                        if safe_float(der) > safe_float(izq): puntos_der += 1
+                        elif safe_float(izq) > safe_float(der): puntos_izq += 1
+                        else: empates += 1
+                    
+                    if puntos_der >= puntos_izq + 3:
+                        dom_txt = "🦵 Dominancia Derecha Consistente"
+                        eslabon_txt = "⚠️ Hemicuerpo Izquierdo (Priorizar entrenamiento compensatorio)"
+                    elif puntos_izq >= puntos_der + 3:
+                        dom_txt = "🦵 Dominancia Izquierda Consistente"
+                        eslabon_txt = "⚠️ Hemicuerpo Derecho (Priorizar entrenamiento compensatorio)"
+                    else:
+                        dom_txt = "⚖️ Perfil Simétrico Equilibrado"
+                        eslabon_txt = "Ninguno (Buen control inter-extremidades)"
+                        
+                    ce1, ce2, ce3 = st.columns(3)
+                    with ce1: kpi_compacto("Mejores Marcas (Pierna Derecha)", f"{puntos_der} / 10")
+                    with ce2: kpi_compacto("Mejores Marcas (Pierna Izquierda)", f"{puntos_izq} / 10")
+                    with ce3: kpi_compacto("Empates Bilaterales", f"{empates} / 10")
+                    
+                    st.info(f"**Análisis de Tendencia Direccional:** {dom_txt} | **Eslabón Débil a compensar:** {eslabon_txt}")
+
+# ==========================================
+# PESTAÑA 2: AÑADIR NUEVA VALORACIÓN
 # ==========================================
 with tab_nuevo:
     if not jugadores:
@@ -161,331 +500,6 @@ with tab_nuevo:
                 except Exception as e:
                     st.error(f"Error al guardar: {e}")
 
-# ==========================================
-# PESTAÑA 2: INFORMES DE VALORACIONES
-# ==========================================
-with tab_informes:
-    st.markdown("### 📈 Informes de Valoraciones y Perfil Individual")
-    if not jugadores or not valoraciones:
-        st.info("No hay datos suficientes para mostrar informes.")
-    else:
-        cf1, cf2, cf3 = st.columns(3)
-        with cf1: jug_sel_prog = st.selectbox("Deportista:", options=list(mapa_jugadores.keys()), format_func=lambda x: mapa_jugadores[x])
-        
-        vals_jugador = [v for v in valoraciones if v.get('jugador_id') == jug_sel_prog]
-        
-        if not vals_jugador:
-            st.warning("Este deportista todavía no tiene valoraciones registradas.")
-        else:
-            df_pj = pd.DataFrame(vals_jugador)
-            temporadas = df_pj['temporada'].dropna().unique().tolist()
-            
-            with cf2: temp_sel = st.selectbox("Temporada:", options=temporadas)
-            df_temp = df_pj[df_pj['temporada'] == temp_sel]
-            
-            if df_temp.empty:
-                st.warning("No hay valoraciones en esta temporada.")
-            else:
-                dicc_vals = {row['id']: f"{row['numero_valoracion']} ({row['fecha']})" for idx, row in df_temp.iterrows()}
-                with cf3: val_sel_id = st.selectbox("Número de Valoración:", options=list(dicc_vals.keys()), format_func=lambda x: dicc_vals[x])
-                
-                v_data = df_temp[df_temp['id'] == val_sel_id].iloc[0]
-                peso_actual = safe_float(v_data.get('peso_corporal'))
-                if peso_actual == 0: peso_actual = 70.0 # Prevención de división por 0
-                
-                def kpi_compacto(titulo, valor):
-                    st.markdown(f"<div style='line-height: 1.2; margin-bottom: 12px;'><span style='font-size: 0.80em; color: #64748b; font-weight: 600;'>{titulo}</span><br><span style='font-size: 1.2em; font-weight: 800;'>{valor}</span></div>", unsafe_allow_html=True)
-
-                def badge_asi(val):
-                    if val < 10: return f"🟢 {val}% (Óptimo)"
-                    elif val <= 15: return f"🟡 {val}% (Precaución)"
-                    else: return f"🔴 {val}% (Riesgo)"
-
-                def badge_hq(val): return f"🟢 {val}" if val >= 0.6 else f"🔴 {val} (Déficit)"
-                def badge_adab(val): return f"🟢 {val}" if val >= 0.9 else f"🔴 {val} (Déficit)"
-
-                st.markdown("---")
-                
-                # ---------------------------------------------------------
-                # 1. MOVILIDAD Y ESTABILIDAD
-                # ---------------------------------------------------------
-                st.markdown("#### 🤸 1. Análisis de Movilidad y Estabilidad")
-                
-                cm1, cm2, cm3, cm4, cm5 = st.columns(5)
-                with cm1: kpi_compacto("FMS 1: Sentadilla profunda", v_data.get('fms_sentadilla', 0))
-                with cm2: kpi_compacto("FMS 2: Paso Obstáculo (D)", v_data.get('fms_paso_obstaculo_der', 0))
-                with cm3: kpi_compacto("FMS 2: Paso Obstáculo (I)", v_data.get('fms_paso_obstaculo_izq', 0))
-                with cm4: kpi_compacto("FMS 3: Zancada en línea (D)", v_data.get('fms_zancada_der', 0))
-                with cm5: kpi_compacto("FMS 3: Zancada en línea (I)", v_data.get('fms_zancada_izq', 0))
-                
-                cm6, cm7, cm8, cm9, cm10, cm11 = st.columns(6)
-                with cm6: kpi_compacto("FMS 4: Movilidad Hombro (D)", v_data.get('fms_mov_hombro_der', 0))
-                with cm7: kpi_compacto("FMS 4: Movilidad Hombro (I)", v_data.get('fms_mov_hombro_izq', 0))
-                with cm8: kpi_compacto("FMS 5: Elevación Pierna (D)", v_data.get('fms_elevacion_pierna_der', 0))
-                with cm9: kpi_compacto("FMS 5: Elevación Pierna (I)", v_data.get('fms_elevacion_pierna_izq', 0))
-                with cm10: kpi_compacto("FMS 6: Estabilidad Tronco", v_data.get('fms_estabilidad_tronco', 0))
-                with cm11: kpi_compacto("FMS 7: Estabilidad Rotatoria", v_data.get('fms_estabilidad_rotatoria', 0))
-
-                mov_total = sum([v_data.get('fms_mov_hombro_der',0), v_data.get('fms_mov_hombro_izq',0), v_data.get('fms_elevacion_pierna_der',0), v_data.get('fms_elevacion_pierna_izq',0)])
-                ctrl_total = sum([v_data.get('fms_sentadilla',0), v_data.get('fms_estabilidad_tronco',0), v_data.get('fms_estabilidad_rotatoria',0), v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0), v_data.get('fms_zancada_der',0), v_data.get('fms_zancada_izq',0)])
-                
-                c_fms1, c_fms2 = st.columns(2)
-                c_fms1.info(f"**Clúster Movilidad:** {mov_total} / 12 pts (Valora la flexibilidad y longitud del tejido)")
-                c_fms2.info(f"**Clúster Control Motor:** {ctrl_total} / 21 pts (Valora la estabilización activa de las articulaciones)")
-
-                st.markdown("---")
-
-                # ---------------------------------------------------------
-                # 2. RENDIMIENTO EN SALTO Y VECTORES DE FUERZA
-                # ---------------------------------------------------------
-                st.markdown("#### 🦘 2. Rendimiento en Salto y Vectores")
-                
-                cs1, cs2, cs3, cs4, cs5 = st.columns(5)
-                with cs1: kpi_compacto("Salto Vertical Bilateral", f"{v_data.get('cmj_bilateral', 0)} cm")
-                with cs2: kpi_compacto("Salto Vertical Unilateral (D)", f"{v_data.get('cmj_uni_der', 0)} cm")
-                with cs3: kpi_compacto("Salto Vertical Unilateral (I)", f"{v_data.get('cmj_uni_izq', 0)} cm")
-                with cs4: kpi_compacto("Salto Horizontal (D)", f"{v_data.get('salto_horiz_der', 0)} cm")
-                with cs5: kpi_compacto("Salto Horizontal (I)", f"{v_data.get('salto_horiz_izq', 0)} cm")
-                
-                # Cálculos de Salto
-                asi_cmj = calcular_asimetria(v_data.get('cmj_uni_der', 0), v_data.get('cmj_uni_izq', 0))
-                cmj_bi = float(v_data.get('cmj_bilateral', 0))
-                cmj_uni_sum = float(v_data.get('cmj_uni_der', 0)) + float(v_data.get('cmj_uni_izq', 0))
-                dbl = round(100 * (cmj_bi / cmj_uni_sum) - 100, 1) if cmj_uni_sum > 0 else 0
-                
-                # Ratio de Vectores (Horizontal vs Vertical)
-                sh_promedio = (float(v_data.get('salto_horiz_der', 0)) + float(v_data.get('salto_horiz_izq', 0))) / 2
-                cmj_uni_promedio = cmj_uni_sum / 2
-                ratio_vectores = round(sh_promedio / cmj_uni_promedio, 2) if cmj_uni_promedio > 0 else 0
-                
-                if ratio_vectores > 4.5:
-                    perfil_vector = "🏃 Dominancia Horizontal (Perfil Acelerador - 1ºs metros)"
-                elif ratio_vectores > 0 and ratio_vectores < 3.5:
-                    perfil_vector = "🚀 Dominancia Vertical (Perfil Aéreo y Velocidad Punta)"
-                elif ratio_vectores >= 3.5 and ratio_vectores <= 4.5:
-                    perfil_vector = "⚖️ Perfil Vectorial Equilibrado"
-                else:
-                    perfil_vector = "Datos insuficientes"
-                
-                ca1, ca2, ca3 = st.columns(3)
-                ca1.info(f"**Asimetría Vertical (Unilateral):** {badge_asi(asi_cmj)}")
-                ca2.info(f"**Déficit Bilateral (DBL):** {dbl}% (Negativo = eficiencia a 1 pierna)")
-                ca3.info(f"**Teoría de Vectores (Ratio H/V):** {ratio_vectores}\n\n{perfil_vector}")
-
-                st.markdown("---")
-
-                # ---------------------------------------------------------
-                # 3. FUERZA MÁXIMA ISOMÉTRICA Y FUERZA RELATIVA
-                # ---------------------------------------------------------
-                st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica y Fuerza Relativa")
-                
-                ci1, ci2, ci3, ci4, ci5, ci6, ci7, ci8 = st.columns(8)
-                with ci1: kpi_compacto("Extensión Cuádriceps (D)", f"{v_data.get('iso_ext_rodilla_der', 0)} N")
-                with ci2: kpi_compacto("Extensión Cuádriceps (I)", f"{v_data.get('iso_ext_rodilla_izq', 0)} N")
-                with ci3: kpi_compacto("Flexión Isquiosurales (D)", f"{v_data.get('iso_flex_rodilla_der', 0)} N")
-                with ci4: kpi_compacto("Flexión Isquiosurales (I)", f"{v_data.get('iso_flex_rodilla_izq', 0)} N")
-                with ci5: kpi_compacto("Aducción Cadera (D)", f"{v_data.get('iso_add_cadera_der', 0)} N")
-                with ci6: kpi_compacto("Aducción Cadera (I)", f"{v_data.get('iso_add_cadera_izq', 0)} N")
-                with ci7: kpi_compacto("Abducción Cadera (D)", f"{v_data.get('iso_abd_cadera_der', 0)} N")
-                with ci8: kpi_compacto("Abducción Cadera (I)", f"{v_data.get('iso_abd_cadera_izq', 0)} N")
-                
-                asi_ext = calcular_asimetria(v_data.get('iso_ext_rodilla_der', 0), v_data.get('iso_ext_rodilla_izq', 0))
-                asi_flx = calcular_asimetria(v_data.get('iso_flex_rodilla_der', 0), v_data.get('iso_flex_rodilla_izq', 0))
-                
-                cai1, cai2 = st.columns(2)
-                cai1.info(f"**Asimetría Extensión de Cuádriceps:** {badge_asi(asi_ext)}")
-                cai2.info(f"**Asimetría Flexión de Isquiosurales:** {badge_asi(asi_flx)}")
-                
-                flx_d, ext_d = v_data.get('iso_flex_rodilla_der', 0), v_data.get('iso_ext_rodilla_der', 0)
-                flx_i, ext_i = v_data.get('iso_flex_rodilla_izq', 0), v_data.get('iso_ext_rodilla_izq', 0)
-                ratio_hq_d = round(flx_d / ext_d, 2) if ext_d > 0 else 0
-                ratio_hq_i = round(flx_i / ext_i, 2) if ext_i > 0 else 0
-                
-                add_d, abd_d = v_data.get('iso_add_cadera_der', 0), v_data.get('iso_abd_cadera_der', 0)
-                add_i, abd_i = v_data.get('iso_add_cadera_izq', 0), v_data.get('iso_abd_cadera_izq', 0)
-                ratio_adab_d = round(add_d / abd_d, 2) if abd_d > 0 else 0
-                ratio_adab_i = round(add_i / abd_i, 2) if abd_i > 0 else 0
-
-                # Nueva métrica: Fuerza Relativa Isométrica (N/kg)
-                f_rel_flx_d = round(flx_d / peso_actual, 2) if peso_actual > 0 else 0
-                f_rel_flx_i = round(flx_i / peso_actual, 2) if peso_actual > 0 else 0
-                def badge_nkg(val): return f"🟢 {val} N/kg" if val >= 3.5 else f"🔴 {val} N/kg (Debilidad base)"
-                
-                st.markdown("**Ratios Clínicos y Fuerza Relativa Isométrica**")
-                cr1, cr2, cr3, cr4 = st.columns(4)
-                with cr1: st.info(f"**Isq/Cuád (D):**\n{badge_hq(ratio_hq_d)}")
-                with cr2: st.info(f"**Isq/Cuád (I):**\n{badge_hq(ratio_hq_i)}")
-                with cr3: st.info(f"**F. Relativa Isquiosural (D):**\n{badge_nkg(f_rel_flx_d)}\n*(Óptimo > 3.5 N/kg)*")
-                with cr4: st.info(f"**F. Relativa Isquiosural (I):**\n{badge_nkg(f_rel_flx_i)}\n*(Óptimo > 3.5 N/kg)*")
-
-                c_adab1, c_adab2 = st.columns(2)
-                c_adab1.info(f"**Aductores / Abductores (D):** {badge_adab(ratio_adab_d)}")
-                c_adab2.info(f"**Aductores / Abductores (I):** {badge_adab(ratio_adab_i)}")
-
-                st.markdown("---")
-
-                # ---------------------------------------------------------
-                # 4. FUERZA MÁXIMA, PERFIL F-V Y DSI
-                # ---------------------------------------------------------
-                st.markdown("#### 🏋️‍♂️ 4. Fuerza Máxima, Perfil F-V y DSI")
-                sq_rm = safe_float(v_data.get('rm_sentadilla'))
-                dl_rm = safe_float(v_data.get('rm_peso_muerto'))
-                f_rel_sq = round(sq_rm / peso_actual, 2) if peso_actual > 0 else 0
-                f_rel_dl = round(dl_rm / peso_actual, 2) if peso_actual > 0 else 0
-                
-                crm1, crm2, crm3, crm4 = st.columns(4)
-                with crm1: kpi_compacto("Estimación 1RM Sentadilla", f"{sq_rm} kg")
-                with crm2: kpi_compacto("Estimación 1RM Peso Muerto", f"{dl_rm} kg")
-                with crm3: kpi_compacto("Fuerza Relativa Sentadilla", f"{f_rel_sq}x Peso Corporal")
-                with crm4: kpi_compacto("Fuerza Relativa Peso Muerto", f"{f_rel_dl}x Peso Corporal")
-                
-                # DSI Adaptado (Transferencia Fuerza-Potencia)
-                dsi_adaptado = round(cmj_bi / f_rel_sq, 1) if f_rel_sq > 0 else 0
-                if dsi_adaptado > 25:
-                    diag_dsi = "🔴 Déficit de Fuerza (Alto CMJ, base débil. Priorizar Sentadilla pesada)"
-                elif dsi_adaptado > 0 and dsi_adaptado < 18:
-                    diag_dsi = "🟡 Déficit de Potencia (Fuerte pero lento. Priorizar Pliometría/Balísticos)"
-                elif dsi_adaptado >= 18 and dsi_adaptado <= 25:
-                    diag_dsi = "🟢 Transferencia Óptima (Equilibrio Fuerza-Potencia)"
-                else:
-                    diag_dsi = "Datos insuficientes"
-                    
-                st.info(f"**Índice de Fuerza Dinámica Adaptado (DSI):** {dsi_adaptado}\n\n*Diagnóstico:* {diag_dsi}")
-                
-                # --- GRÁFICOS DE PERFIL FUERZA-VELOCIDAD Y CUADRANTE ---
-                def analizar_perfil_fv(datos_json, titulo, peso_corp):
-                    if not datos_json or not isinstance(datos_json, dict): return None, None
-                    kgs = np.array([k for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0])
-                    vels = np.array([v for k, v in zip(datos_json.get('kg', []), datos_json.get('vel', [])) if k > 0 and v > 0])
-                    
-                    if len(kgs) > 1:
-                        # 1. Regresión lineal
-                        z = np.polyfit(kgs, vels, 1)
-                        p = np.poly1d(z)
-                        slope, intercept = z[0], z[1]
-                        
-                        # 2. Cálculo de R^2 (Fiabilidad)
-                        ss_res = np.sum((vels - p(kgs))**2)
-                        ss_tot = np.sum((vels - np.mean(vels))**2)
-                        r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
-                        
-                        # 3. Variables Teóricas
-                        v0 = intercept # Vel. a 0 kg
-                        f0_kg = -intercept / slope if slope < 0 else 0 # Carga a 0 m/s
-                        f0_rel = f0_kg / peso_corp if peso_corp > 0 else 0 # Fuerza Relativa Teórica
-                        
-                        # 4. Clasificación en Cuadrante (Valores normativos estándar)
-                        if f0_rel >= 2.2 and v0 >= 1.3:
-                            cuadrante = "🟢 Perfil Óptimo (Fuerte y Rápido)"
-                        elif f0_rel < 2.2 and v0 >= 1.3:
-                            cuadrante = "🟡 Déficit de Fuerza (Rápido pero Débil)"
-                        elif f0_rel >= 2.2 and v0 < 1.3:
-                            cuadrante = "🟡 Déficit de Velocidad (Fuerte pero Lento)"
-                        else:
-                            cuadrante = "🔴 Déficit Global (Débil y Lento)"
-                            
-                        # 5. Creación del Gráfico
-                        fig = px.scatter(x=kgs, y=vels, labels={'x': 'Carga (kg)', 'y': 'Velocidad (m/s)'}, title=titulo)
-                        fig.update_traces(marker=dict(size=10, color='#dc2626'))
-                        x_trend = np.linspace(min(kgs), max(kgs), 50)
-                        fig.add_scatter(x=x_trend, y=p(x_trend), mode='lines', name='Tendencia', line=dict(dash='dash', color='#64748b'))
-                        fig.update_layout(showlegend=False, height=300, margin=dict(l=20, r=20, t=40, b=20))
-                        
-                        stats = {"r2": r2, "v0": v0, "f0_kg": f0_kg, "cuadrante": cuadrante}
-                        return fig, stats
-                    return None, None
-
-                p_sq_data = v_data.get('perfil_sentadilla', {})
-                p_pm_data = v_data.get('perfil_peso_muerto', {})
-                
-                fig_sq, stats_sq = analizar_perfil_fv(p_sq_data, "Perfil F-V Sentadilla", peso_actual)
-                fig_pm, stats_pm = analizar_perfil_fv(p_pm_data, "Perfil F-V Peso Muerto", peso_actual)
-
-                if fig_sq or fig_pm:
-                    c_fig1, c_fig2 = st.columns(2)
-                    
-                    with c_fig1:
-                        if fig_sq:
-                            st.plotly_chart(fig_sq, use_container_width=True)
-                            fiabilidad_sq = "🟢 Excelente" if stats_sq['r2'] >= 0.95 else ("🟡 Aceptable" if stats_sq['r2'] >= 0.90 else "🔴 Pobre (Falta intención)")
-                            st.info(f"**Diagnóstico SQ:** {stats_sq['cuadrante']}\n\n**V0 Teórica:** {round(stats_sq['v0'], 2)} m/s | **F0 Teórica:** {round(stats_sq['f0_kg'], 1)} kg\n\n**Fiabilidad del test ($R^2$):** {round(stats_sq['r2'], 3)} ({fiabilidad_sq})")
-                            
-                    with c_fig2:
-                        if fig_pm:
-                            st.plotly_chart(fig_pm, use_container_width=True)
-                            fiabilidad_pm = "🟢 Excelente" if stats_pm['r2'] >= 0.95 else ("🟡 Aceptable" if stats_pm['r2'] >= 0.90 else "🔴 Pobre (Falta intención)")
-                            st.info(f"**Diagnóstico PM:** {stats_pm['cuadrante']}\n\n**V0 Teórica:** {round(stats_pm['v0'], 2)} m/s | **F0 Teórica:** {round(stats_pm['f0_kg'], 1)} kg\n\n**Fiabilidad del test ($R^2$):** {round(stats_pm['r2'], 3)} ({fiabilidad_pm})")
-
-                st.markdown("---")
-
-                if sq_rm > 0 or dl_rm > 0:
-                    cz1, cz2 = st.columns(2)
-                    with cz1:
-                        st.markdown("*Zonas de Carga de Ejercicios Básicos*")
-                        df_zonas = pd.DataFrame({
-                            "Intensidad": ["100% (1RM)", "90%", "80%", "70%", "60%"],
-                            "Sentadilla (kg)": [sq_rm, round(sq_rm*0.9,1), round(sq_rm*0.8,1), round(sq_rm*0.7,1), round(sq_rm*0.6,1)],
-                            "Peso Muerto (kg)": [dl_rm, round(dl_rm*0.9,1), round(dl_rm*0.8,1), round(dl_rm*0.7,1), round(dl_rm*0.6,1)]
-                        })
-                        st.dataframe(df_zonas, hide_index=True)
-                    
-                    with cz2:
-                        st.markdown("*Estimación para Ejercicios Accesorios*")
-                        df_acc = pd.DataFrame({
-                            "Ejercicio Accesorio": ["Empuje de Cadera", "Peso Muerto Asimétrico", "Sentadilla Búlgara", "Zancada", "Peso Muerto Rumano Unilateral"],
-                            "Estimación (kg)": [
-                                round(sq_rm * 1.20, 1), round(dl_rm * 0.70, 1),
-                                round(sq_rm * 0.50, 1), round(sq_rm * 0.45, 1),
-                                round(dl_rm * 0.45, 1)
-                            ]
-                        })
-                        st.dataframe(df_acc, hide_index=True)
-                else:
-                    st.info("No se registraron datos válidos en esta valoración para calcular las proyecciones.")
-                # ---------------------------------------------------------
-                # 5. ASIMETRÍA DIRECCIONAL GLOBAL (EL ESLABÓN DÉBIL)
-                # ---------------------------------------------------------
-                st.markdown("#### 🧭 5. Asimetría Direccional Global (El Eslabón Débil)")
-                
-                # Algoritmo de "Victorias" unilaterales (10 Pruebas Totales)
-                puntos_der, puntos_izq, empates = 0, 0, 0
-                pruebas_uni = [
-                    (v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0)),
-                    (v_data.get('fms_zancada_der',0), v_data.get('fms_zancada_izq',0)),
-                    (v_data.get('fms_mov_hombro_der',0), v_data.get('fms_mov_hombro_izq',0)),
-                    (v_data.get('fms_elevacion_pierna_der',0), v_data.get('fms_elevacion_pierna_izq',0)),
-                    (v_data.get('cmj_uni_der',0), v_data.get('cmj_uni_izq',0)),
-                    (v_data.get('salto_horiz_der',0), v_data.get('salto_horiz_izq',0)),
-                    (v_data.get('iso_ext_rodilla_der',0), v_data.get('iso_ext_rodilla_izq',0)),
-                    (v_data.get('iso_flex_rodilla_der',0), v_data.get('iso_flex_rodilla_izq',0)),
-                    (v_data.get('iso_add_cadera_der',0), v_data.get('iso_add_cadera_izq',0)),
-                    (v_data.get('iso_abd_cadera_der',0), v_data.get('iso_abd_cadera_izq',0))
-                ]
-                
-                for der, izq in pruebas_uni:
-                    if der > izq: puntos_der += 1
-                    elif izq > der: puntos_izq += 1
-                    else: empates += 1
-                
-                total_tests = 10
-                
-                if puntos_der >= puntos_izq + 3:
-                    dom_txt = "🦵 Dominancia Derecha Consistente"
-                    eslabon_txt = "⚠️ Hemicuerpo Izquierdo (Priorizar entrenamiento compensatorio)"
-                elif puntos_izq >= puntos_der + 3:
-                    dom_txt = "🦵 Dominancia Izquierda Consistente"
-                    eslabon_txt = "⚠️ Hemicuerpo Derecho (Priorizar entrenamiento compensatorio)"
-                else:
-                    dom_txt = "⚖️ Perfil Simétrico Equilibrado"
-                    eslabon_txt = "Ninguno (Buen control inter-extremidades)"
-                    
-                ce1, ce2, ce3 = st.columns(3)
-                with ce1: kpi_compacto("Mejores Marcas (Pierna Derecha)", f"{puntos_der} / {total_tests}")
-                with ce2: kpi_compacto("Mejores Marcas (Pierna Izquierda)", f"{puntos_izq} / {total_tests}")
-                with ce3: kpi_compacto("Empates Bilaterales", f"{empates} / {total_tests}")
-                
-                st.info(f"**Análisis de Tendencia Direccional:** {dom_txt} | **Eslabón Débil a compensar:** {eslabon_txt}")
-                st.markdown("---")
 # ==========================================
 # PESTAÑA 3: TABLA DE REGISTROS
 # ==========================================
