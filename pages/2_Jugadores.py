@@ -102,7 +102,7 @@ with tab_nuevo:
                     }
                     
                     supabase.table("jugadores").insert(nuevo_jugador).execute()
-                    cargar_datos_sistema()
+                    cargar_datos_sistema(force_refresh=True)
                     st.success(f"¡Deportista '{nombre}' registrado correctamente!")
                     st.rerun()
                 except Exception as e:
@@ -175,7 +175,7 @@ with tab_editar:
                             }
                             
                             supabase.table("jugadores").update(datos_actualizados).eq("id", jugador_editar_id).execute()
-                            cargar_datos_sistema()
+                            cargar_datos_sistema(force_refresh=True)
                             st.success(f"¡Datos de '{e_nombre}' actualizados correctamente!")
                             st.rerun()
                         except Exception as e:
