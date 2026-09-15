@@ -50,7 +50,7 @@ if not st.session_state.autenticado:
 if not st.session_state.get("datos_cargados", False):
     cargar_datos_sistema()
 
-st.title("Inicio")
+st.title("🏠 Inicio")
 st.markdown("---")
 
 total_jugadores = len(st.session_state.jugadores)
