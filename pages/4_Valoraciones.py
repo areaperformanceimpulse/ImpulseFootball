@@ -67,8 +67,25 @@ with tab_informes:
                     peso_actual = safe_float(v_data.get('peso_corporal'))
                     if peso_actual == 0: peso_actual = 70.0 
                     
-                    def kpi_compacto(titulo, valor):
-                        st.markdown(f"<div style='line-height: 1.2; margin-bottom: 12px;'><span style='font-size: 0.80em; color: #64748b; font-weight: 600;'>{titulo}</span><br><span style='font-size: 1.2em; font-weight: 800;'>{valor}</span></div>", unsafe_allow_html=True)
+                    def tarjeta_kpi(titulo, valor, subtitulo=""):
+                        st.markdown(f"""
+                        <div style='background-color: white; padding: 15px; border-radius: 8px; border-left: 5px solid #10833d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; border-right: 1px solid #eee; border-top: 1px solid #eee; border-bottom: 1px solid #eee;'>
+                            <div style='font-size: 0.80em; color: #64748b; font-weight: 600; text-transform: uppercase;'>{titulo}</div>
+                            <div style='font-size: 1.4em; font-weight: 800; color: #09274e;'>{valor}</div>
+                            {f"<div style='font-size: 0.8em; color: #64748b; margin-top: 4px;'>{subtitulo}</div>" if subtitulo else ""}
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    def tarjeta_kpi_doble(titulo, val_d, val_i, lbl_d="Der", lbl_i="Izq"):
+                        st.markdown(f"""
+                        <div style='background-color: white; padding: 15px; border-radius: 8px; border-left: 5px solid #09274e; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; border-right: 1px solid #eee; border-top: 1px solid #eee; border-bottom: 1px solid #eee;'>
+                            <div style='font-size: 0.80em; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;'>{titulo}</div>
+                            <div style='display: flex; justify-content: space-between;'>
+                                <div><span style='font-size: 0.85em; color: #64748b;'>{lbl_d}:</span> <span style='font-size: 1.2em; font-weight: 800; color: #10833d;'>{val_d}</span></div>
+                                <div><span style='font-size: 0.85em; color: #64748b;'>{lbl_i}:</span> <span style='font-size: 1.2em; font-weight: 800; color: #10833d;'>{val_i}</span></div>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
                     # Función de asimetría que identifica la pierna débil
                     def badge_asi_detallado(val, der, izq):
@@ -184,20 +201,16 @@ with tab_informes:
                     # ---------------------------------------------------------
                     st.markdown("#### 🤸 1. Análisis de Movilidad y Estabilidad")
                     
-                    cm1, cm2, cm3, cm4, cm5 = st.columns(5)
-                    with cm1: kpi_compacto("FMS 1: Sentadilla profunda", v_data.get('fms_sentadilla', 0))
-                    with cm2: kpi_compacto("FMS 2: Paso Obstáculo (D)", v_data.get('fms_paso_obstaculo_der', 0))
-                    with cm3: kpi_compacto("FMS 2: Paso Obstáculo (I)", v_data.get('fms_paso_obstaculo_izq', 0))
-                    with cm4: kpi_compacto("FMS 3: Zancada en línea (D)", v_data.get('fms_zancada_der', 0))
-                    with cm5: kpi_compacto("FMS 3: Zancada en línea (I)", v_data.get('fms_zancada_izq', 0))
+                    cm1, cm2, cm3 = st.columns(3)
+                    with cm1: tarjeta_kpi("FMS 1: Sentadilla profunda", v_data.get('fms_sentadilla', 0))
+                    with cm2: tarjeta_kpi_doble("FMS 2: Paso Obstáculo", v_data.get('fms_paso_obstaculo_der', 0), v_data.get('fms_paso_obstaculo_izq', 0))
+                    with cm3: tarjeta_kpi_doble("FMS 3: Zancada en línea", v_data.get('fms_zancada_der', 0), v_data.get('fms_zancada_izq', 0))
                     
-                    cm6, cm7, cm8, cm9, cm10, cm11 = st.columns(6)
-                    with cm6: kpi_compacto("FMS 4: Movilidad Hombro (D)", v_data.get('fms_mov_hombro_der', 0))
-                    with cm7: kpi_compacto("FMS 4: Movilidad Hombro (I)", v_data.get('fms_mov_hombro_izq', 0))
-                    with cm8: kpi_compacto("FMS 5: Elevación Pierna (D)", v_data.get('fms_elevacion_pierna_der', 0))
-                    with cm9: kpi_compacto("FMS 5: Elevación Pierna (I)", v_data.get('fms_elevacion_pierna_izq', 0))
-                    with cm10: kpi_compacto("FMS 6: Estabilidad Tronco", v_data.get('fms_estabilidad_tronco', 0))
-                    with cm11: kpi_compacto("FMS 7: Estabilidad Rotatoria", v_data.get('fms_estabilidad_rotatoria', 0))
+                    cm4, cm5, cm6, cm7 = st.columns(4)
+                    with cm4: tarjeta_kpi_doble("FMS 4: Mov. Hombro", v_data.get('fms_mov_hombro_der', 0), v_data.get('fms_mov_hombro_izq', 0))
+                    with cm5: tarjeta_kpi_doble("FMS 5: Elev. Pierna", v_data.get('fms_elevacion_pierna_der', 0), v_data.get('fms_elevacion_pierna_izq', 0))
+                    with cm6: tarjeta_kpi("FMS 6: Est. Tronco", v_data.get('fms_estabilidad_tronco', 0))
+                    with cm7: tarjeta_kpi("FMS 7: Est. Rotatoria", v_data.get('fms_estabilidad_rotatoria', 0))
 
                     mov_total = sum([v_data.get('fms_mov_hombro_der',0), v_data.get('fms_mov_hombro_izq',0), v_data.get('fms_elevacion_pierna_der',0), v_data.get('fms_elevacion_pierna_izq',0)])
                     ctrl_total = sum([v_data.get('fms_sentadilla',0), v_data.get('fms_estabilidad_tronco',0), v_data.get('fms_estabilidad_rotatoria',0), v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0), v_data.get('fms_zancada_der',0), v_data.get('fms_zancada_izq',0)])
@@ -221,12 +234,10 @@ with tab_informes:
                     # ---------------------------------------------------------
                     st.markdown("#### 🦘 2. Rendimiento en Salto y Vectores")
                     
-                    cs1, cs2, cs3, cs4, cs5 = st.columns(5)
-                    with cs1: kpi_compacto("Salto Vertical Bilateral", f"{v_data.get('cmj_bilateral', 0)} cm")
-                    with cs2: kpi_compacto("Salto Vertical Unilateral (D)", f"{v_data.get('cmj_uni_der', 0)} cm")
-                    with cs3: kpi_compacto("Salto Vertical Unilateral (I)", f"{v_data.get('cmj_uni_izq', 0)} cm")
-                    with cs4: kpi_compacto("Salto Horizontal (D)", f"{v_data.get('salto_horiz_der', 0)} cm")
-                    with cs5: kpi_compacto("Salto Horizontal (I)", f"{v_data.get('salto_horiz_izq', 0)} cm")
+                    cs1, cs2, cs3 = st.columns(3)
+                    with cs1: tarjeta_kpi("Salto Vertical Bilateral", f"{v_data.get('cmj_bilateral', 0)} cm")
+                    with cs2: tarjeta_kpi_doble("Salto Vertical Unilateral", f"{v_data.get('cmj_uni_der', 0)} cm", f"{v_data.get('cmj_uni_izq', 0)} cm")
+                    with cs3: tarjeta_kpi_doble("Salto Horizontal", f"{v_data.get('salto_horiz_der', 0)} cm", f"{v_data.get('salto_horiz_izq', 0)} cm")
                     
                     cmj_d, cmj_i = v_data.get('cmj_uni_der', 0), v_data.get('cmj_uni_izq', 0)
                     asi_cmj = calcular_asimetria(cmj_d, cmj_i)
@@ -267,15 +278,11 @@ with tab_informes:
                     # ---------------------------------------------------------
                     st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica y Fuerza Relativa")
                     
-                    ci1, ci2, ci3, ci4, ci5, ci6, ci7, ci8 = st.columns(8)
-                    with ci1: kpi_compacto("Extensión Cuád (D)", f"{v_data.get('iso_ext_rodilla_der', 0)} N")
-                    with ci2: kpi_compacto("Extensión Cuád (I)", f"{v_data.get('iso_ext_rodilla_izq', 0)} N")
-                    with ci3: kpi_compacto("Flexión Isquio (D)", f"{v_data.get('iso_flex_rodilla_der', 0)} N")
-                    with ci4: kpi_compacto("Flexión Isquio (I)", f"{v_data.get('iso_flex_rodilla_izq', 0)} N")
-                    with ci5: kpi_compacto("Aducción (D)", f"{v_data.get('iso_add_cadera_der', 0)} N")
-                    with ci6: kpi_compacto("Aducción (I)", f"{v_data.get('iso_add_cadera_izq', 0)} N")
-                    with ci7: kpi_compacto("Abducción (D)", f"{v_data.get('iso_abd_cadera_der', 0)} N")
-                    with ci8: kpi_compacto("Abducción (I)", f"{v_data.get('iso_abd_cadera_izq', 0)} N")
+                    ci1, ci2, ci3, ci4 = st.columns(4)
+                    with ci1: tarjeta_kpi_doble("Extensión (Cuád)", f"{v_data.get('iso_ext_rodilla_der', 0)} N", f"{v_data.get('iso_ext_rodilla_izq', 0)} N")
+                    with ci2: tarjeta_kpi_doble("Flexión (Isq)", f"{v_data.get('iso_flex_rodilla_der', 0)} N", f"{v_data.get('iso_flex_rodilla_izq', 0)} N")
+                    with ci3: tarjeta_kpi_doble("Aducción", f"{v_data.get('iso_add_cadera_der', 0)} N", f"{v_data.get('iso_add_cadera_izq', 0)} N")
+                    with ci4: tarjeta_kpi_doble("Abducción", f"{v_data.get('iso_abd_cadera_der', 0)} N", f"{v_data.get('iso_abd_cadera_izq', 0)} N")
                     
                     ext_d, ext_i = v_data.get('iso_ext_rodilla_der', 0), v_data.get('iso_ext_rodilla_izq', 0)
                     flx_d, flx_i = v_data.get('iso_flex_rodilla_der', 0), v_data.get('iso_flex_rodilla_izq', 0)
@@ -371,9 +378,9 @@ with tab_informes:
                             else: cuadrante = "🔴 Déficit Global (Débil y Lento)"
                                 
                             fig = px.scatter(x=kgs, y=vels, labels={'x': 'Carga (kg)', 'y': 'Velocidad (m/s)'}, title=titulo)
-                            fig.update_traces(marker=dict(size=10, color='#dc2626'))
+                            fig.update_traces(marker=dict(size=10, color='#10833d')
                             x_trend = np.linspace(min(kgs), max(kgs), 50)
-                            fig.add_scatter(x=x_trend, y=p(x_trend), mode='lines', name='Tendencia', line=dict(dash='dash', color='#64748b'))
+                            fig.add_scatter(x=x_trend, y=p(x_trend), mode='lines', name='Tendencia', line=dict(dash='dash', color='#09274e')))
                             fig.update_layout(showlegend=False, height=300, margin=dict(l=20, r=20, t=40, b=20))
                             
                             return fig, {"r2": r2, "v0": v0, "f0_kg": f0_kg, "cuadrante": cuadrante}
@@ -621,22 +628,47 @@ with tab_nuevo:
                     st.error(f"Error al guardar: {e}")
 
 # ==========================================
-# PESTAÑA 3: TABLA DE REGISTROS
+# PESTAÑA 3: TABLA DE REGISTROS Y GESTIÓN
 # ==========================================
 with tab_reg:
-    st.markdown("### 📋 Tabla de Registros Generales")
+    st.markdown("### 📋 Tabla de Registros y Gestión")
+    
     if not valoraciones:
         st.info("No hay valoraciones registradas todavía.")
     else:
+        # 1. DETECCIÓN DE DUPLICADOS
+        from collections import Counter
+        pares_jugador_fecha = [(v['jugador_id'], v['fecha']) for v in valoraciones]
+        duplicados = [item for item, count in Counter(pares_jugador_fecha).items() if count > 1]
+        
+        if duplicados:
+            st.error("⚠️ **¡Atención! Se han detectado valoraciones duplicadas (mismo deportista el mismo día).**")
+            for dup in duplicados:
+                nombre_dup = mapa_jugadores.get(dup[0], 'Desconocido')
+                st.write(f"- {nombre_dup} tiene más de un registro el {dup[1]}")
+            st.markdown("---")
+
         df_vals_completos = pd.DataFrame(valoraciones)
         df_vals_completos['Deportista'] = df_vals_completos['jugador_id'].map(mapa_jugadores)
         
+        # 2. FILTROS DE VISUALIZACIÓN
+        cf1, cf2 = st.columns(2)
+        with cf1:
+            lista_jugadores_unicos = sorted(df_vals_completos['Deportista'].dropna().unique())
+            filtro_jug = st.selectbox("Filtrar por Deportista:", ["Todos"] + lista_jugadores_unicos)
+        with cf2:
+            lista_temps = sorted(df_vals_completos['temporada'].dropna().unique())
+            filtro_temp = st.selectbox("Filtrar por Temporada:", ["Todas"] + lista_temps)
+            
+        df_filtrado = df_vals_completos.copy()
+        if filtro_jug != "Todos": df_filtrado = df_filtrado[df_filtrado['Deportista'] == filtro_jug]
+        if filtro_temp != "Todas": df_filtrado = df_filtrado[df_filtrado['temporada'] == filtro_temp]
+
+        # 3. PREPARACIÓN Y MUESTRA DE LA TABLA
         renombres = {
             'fecha': 'Fecha', 'temporada': 'Temporada', 'numero_valoracion': 'Nº Val.', 'Deportista': 'Deportista', 'lesion': 'Lesión', 'peso_corporal': 'Peso (kg)',
-            'fms_sentadilla': 'FMS Sentadilla', 
-            'fms_paso_obstaculo_der': 'FMS Paso Obst. (Der)', 'fms_paso_obstaculo_izq': 'FMS Paso Obst. (Izq)',
-            'fms_zancada_der': 'FMS Zancada (Der)', 'fms_zancada_izq': 'FMS Zancada (Izq)', 
-            'fms_mov_hombro_der': 'FMS Hombro (Der)', 'fms_mov_hombro_izq': 'FMS Hombro (Izq)', 
+            'fms_sentadilla': 'FMS Sentadilla', 'fms_paso_obstaculo_der': 'FMS Paso Obst. (Der)', 'fms_paso_obstaculo_izq': 'FMS Paso Obst. (Izq)',
+            'fms_zancada_der': 'FMS Zancada (Der)', 'fms_zancada_izq': 'FMS Zancada (Izq)', 'fms_mov_hombro_der': 'FMS Hombro (Der)', 'fms_mov_hombro_izq': 'FMS Hombro (Izq)', 
             'fms_elevacion_pierna_der': 'FMS Elev. Pierna (Der)', 'fms_elevacion_pierna_izq': 'FMS Elev. Pierna (Izq)',
             'fms_estabilidad_tronco': 'FMS Estab. Tronco', 'fms_estabilidad_rotatoria': 'FMS Estab. Rotatoria',
             'cmj_bilateral': 'CMJ Bilateral (cm)', 'cmj_uni_der': 'CMJ Uni. (Der)', 'cmj_uni_izq': 'CMJ Uni. (Izq)',
@@ -649,9 +681,29 @@ with tab_reg:
         }
         
         cols_base = ['Deportista', 'Fecha', 'Temporada', 'Nº Val.', 'Lesión', 'Peso (kg)']
-        df_vals_completos = df_vals_completos.rename(columns=renombres)
-        cols_existentes = [c for c in df_vals_completos.columns if c in renombres.values()]
-        resto_cols = [c for c in cols_existentes if c not in cols_base]
-        orden_final = cols_base + resto_cols
+        df_mostrar = df_filtrado.rename(columns=renombres)
+        cols_existentes = [c for c in df_mostrar.columns if c in renombres.values()]
+        orden_final = cols_base + [c for c in cols_existentes if c not in cols_base]
         
-        st.data_editor(df_vals_completos[orden_final], use_container_width=True, hide_index=True)
+        st.dataframe(df_mostrar[orden_final], use_container_width=True, hide_index=True)
+
+        # 4. ELIMINACIÓN DE REGISTROS
+        st.markdown("---")
+        st.markdown("#### ⚙️ Gestión: Eliminar Registro")
+        opciones_eliminar = {row['id']: f"{row['Deportista']} - {row['Fecha']} (Val. {row['Nº Val.']})" for idx, row in df_filtrado.iterrows()}
+        
+        c_del1, c_del2 = st.columns([3, 1])
+        with c_del1:
+            val_a_eliminar = st.selectbox("Selecciona una valoración para borrarla del sistema:", [None] + list(opciones_eliminar.keys()), format_func=lambda x: opciones_eliminar[x] if x else "Seleccionar registro...")
+        with c_del2:
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+            if val_a_eliminar:
+                if st.button("🗑️ Eliminar Definitivamente", use_container_width=True, type="primary"):
+                    try:
+                        supabase.table("valoraciones_condicionales").delete().eq("id", val_a_eliminar).execute()
+                        from database.db_manager import cargar_datos_sistema
+                        cargar_datos_sistema(force_refresh=True)
+                        st.success("¡Registro eliminado correctamente!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error al eliminar: {e}")
