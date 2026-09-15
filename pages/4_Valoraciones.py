@@ -687,20 +687,107 @@ with tab_reg:
         
         st.dataframe(df_mostrar[orden_final], use_container_width=True, hide_index=True)
 
-        # 4. ELIMINACIÓN DE REGISTROS
+        # 4. GESTIÓN: MODIFICAR O ELIMINAR REGISTRO
         st.markdown("---")
-        st.markdown("#### ⚙️ Gestión: Eliminar Registro")
-        opciones_eliminar = {row['id']: f"{row['Deportista']} - {row['fecha']} (Val. {row['numero_valoracion']})" for idx, row in df_filtrado.iterrows()}
+        st.markdown("#### ⚙️ Gestión: Modificar o Eliminar Registro")
+        opciones_gestion = {row['id']: f"{row['Deportista']} - {row['fecha']} (Val. {row['numero_valoracion']})" for idx, row in df_filtrado.iterrows()}
         
-        c_del1, c_del2 = st.columns([3, 1])
-        with c_del1:
-            val_a_eliminar = st.selectbox("Selecciona una valoración para borrarla del sistema:", [None] + list(opciones_eliminar.keys()), format_func=lambda x: opciones_eliminar[x] if x else "Seleccionar registro...")
-        with c_del2:
-            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-            if val_a_eliminar:
-                if st.button("🗑️ Eliminar Definitivamente", use_container_width=True, type="primary"):
+        val_seleccionada = st.selectbox("Selecciona una valoración para gestionarla:", [None] + list(opciones_gestion.keys()), format_func=lambda x: opciones_gestion[x] if x else "Seleccionar registro...")
+        
+        if val_seleccionada:
+            val_actual = next((v for v in valoraciones if v['id'] == val_seleccionada), None)
+            
+            if val_actual:
+                with st.form("form_editar_valoracion"):
+                    st.info(f"Modificando datos de: **{mapa_jugadores.get(val_actual.get('jugador_id'), '')}**")
+                    
+                    # DATOS GENERALES
+                    st.markdown("**⚙️ Datos Básicos**")
+                    ce1, ce2, ce3, ce4 = st.columns(4)
+                    with ce1: e_fecha = st.date_input("Fecha:", value=pd.to_datetime(val_actual.get('fecha')).date())
+                    with ce2: e_num = st.number_input("Nº Val:", min_value=1, value=int(val_actual.get('numero_valoracion', 1)))
+                    with ce3: 
+                        les_idx = 0 if val_actual.get('lesion') == "No" else 1
+                        e_lesion = st.radio("¿Lesión activa?", ["No", "Sí"], index=les_idx, horizontal=True)
+                    with ce4: e_peso = st.number_input("Peso (kg):", min_value=30.0, value=float(val_actual.get('peso_corporal', 70.0)))
+
+                    # FMS
+                    st.markdown("**🤸 1. Protocolo FMS**")
+                    cf_e1, cf_e2, cf_e3, cf_e4, cf_e5, cf_e6 = st.columns(6)
+                    with cf_e1: 
+                        ef_sq = st.number_input("Sentadilla", 0, 3, int(val_actual.get('fms_sentadilla', 0)))
+                        ef_tronco = st.number_input("Est. Tronco", 0, 3, int(val_actual.get('fms_estabilidad_tronco', 0)))
+                    with cf_e2: 
+                        ef_obs_d = st.number_input("Obst. Der", 0, 3, int(val_actual.get('fms_paso_obstaculo_der', 0)))
+                        ef_obs_i = st.number_input("Obst. Izq", 0, 3, int(val_actual.get('fms_paso_obstaculo_izq', 0)))
+                    with cf_e3: 
+                        ef_zan_d = st.number_input("Zanc. Der", 0, 3, int(val_actual.get('fms_zancada_der', 0)))
+                        ef_zan_i = st.number_input("Zanc. Izq", 0, 3, int(val_actual.get('fms_zancada_izq', 0)))
+                    with cf_e4:
+                        ef_hom_d = st.number_input("Homb. Der", 0, 3, int(val_actual.get('fms_mov_hombro_der', 0)))
+                        ef_hom_i = st.number_input("Homb. Izq", 0, 3, int(val_actual.get('fms_mov_hombro_izq', 0)))
+                    with cf_e5:
+                        ef_pie_d = st.number_input("Pier. Der", 0, 3, int(val_actual.get('fms_elevacion_pierna_der', 0)))
+                        ef_pie_i = st.number_input("Pier. Izq", 0, 3, int(val_actual.get('fms_elevacion_pierna_izq', 0)))
+                    with cf_e6:
+                        ef_rot = st.number_input("Est. Rotatoria", 0, 3, int(val_actual.get('fms_estabilidad_rotatoria', 0)))
+
+                    # SALTO Y VECTORES
+                    st.markdown("**🦘 2. Salto (cm)**")
+                    cs_e1, cs_e2, cs_e3, cs_e4, cs_e5 = st.columns(5)
+                    with cs_e1: e_cmj_bi = st.number_input("CMJ Bi", value=float(val_actual.get('cmj_bilateral', 0)))
+                    with cs_e2: e_cmj_ud = st.number_input("CMJ Uni D", value=float(val_actual.get('cmj_uni_der', 0)))
+                    with cs_e3: e_cmj_ui = st.number_input("CMJ Uni I", value=float(val_actual.get('cmj_uni_izq', 0)))
+                    with cs_e4: e_sh_d = st.number_input("Horiz. D", value=float(val_actual.get('salto_horiz_der', 0)))
+                    with cs_e5: e_sh_i = st.number_input("Horiz. I", value=float(val_actual.get('salto_horiz_izq', 0)))
+
+                    # ISOMETRÍA
+                    st.markdown("**⚡ 3. Isometría (N)**")
+                    ci_e1, ci_e2, ci_e3, ci_e4 = st.columns(4)
+                    with ci_e1:
+                        e_ext_d = st.number_input("Ext. Cuád D", value=float(val_actual.get('iso_ext_rodilla_der', 0)))
+                        e_ext_i = st.number_input("Ext. Cuád I", value=float(val_actual.get('iso_ext_rodilla_izq', 0)))
+                    with ci_e2:
+                        e_flx_d = st.number_input("Flex. Isq D", value=float(val_actual.get('iso_flex_rodilla_der', 0)))
+                        e_flx_i = st.number_input("Flex. Isq I", value=float(val_actual.get('iso_flex_rodilla_izq', 0)))
+                    with ci_e3:
+                        e_add_d = st.number_input("Aducción D", value=float(val_actual.get('iso_add_cadera_der', 0)))
+                        e_add_i = st.number_input("Aducción I", value=float(val_actual.get('iso_add_cadera_izq', 0)))
+                    with ci_e4:
+                        e_abd_d = st.number_input("Abducción D", value=float(val_actual.get('iso_abd_cadera_der', 0)))
+                        e_abd_i = st.number_input("Abducción I", value=float(val_actual.get('iso_abd_cadera_izq', 0)))
+
+                    # RM Y COMENTARIOS
+                    st.markdown("**🏋️‍♂️ 4. RM Estimado y Observaciones**")
+                    cr_e1, cr_e2, cr_e3 = st.columns([1, 1, 2])
+                    with cr_e1: e_rm_sq = st.number_input("1RM Sentadilla", value=float(val_actual.get('rm_sentadilla', 0)))
+                    with cr_e2: e_rm_pm = st.number_input("1RM Peso Muerto", value=float(val_actual.get('rm_peso_muerto', 0)))
+                    with cr_e3: e_comentarios = st.text_input("Observaciones", value=val_actual.get('comentarios', ''))
+
+                    if st.form_submit_button("💾 Guardar Modificaciones", use_container_width=True):
+                        try:
+                            datos_actualizados = {
+                                "fecha": str(e_fecha), "numero_valoracion": int(e_num), "lesion": e_lesion, "peso_corporal": float(e_peso),
+                                "fms_sentadilla": ef_sq, "fms_paso_obstaculo_der": ef_obs_d, "fms_paso_obstaculo_izq": ef_obs_i,
+                                "fms_zancada_der": ef_zan_d, "fms_zancada_izq": ef_zan_i, "fms_mov_hombro_der": ef_hom_d, "fms_mov_hombro_izq": ef_hom_i,
+                                "fms_elevacion_pierna_der": ef_pie_d, "fms_elevacion_pierna_izq": ef_pie_i, "fms_estabilidad_tronco": ef_tronco, "fms_estabilidad_rotatoria": ef_rot,
+                                "cmj_bilateral": e_cmj_bi, "cmj_uni_der": e_cmj_ud, "cmj_uni_izq": e_cmj_ui, "salto_horiz_der": e_sh_d, "salto_horiz_izq": e_sh_i,
+                                "iso_ext_rodilla_der": e_ext_d, "iso_ext_rodilla_izq": e_ext_i, "iso_flex_rodilla_der": e_flx_d, "iso_flex_rodilla_izq": e_flx_i,
+                                "iso_add_cadera_der": e_add_d, "iso_add_cadera_izq": e_add_i, "iso_abd_cadera_der": e_abd_d, "iso_abd_cadera_izq": e_abd_i,
+                                "rm_sentadilla": float(e_rm_sq), "rm_peso_muerto": float(e_rm_pm), "comentarios": e_comentarios
+                            }
+                            supabase.table("valoraciones_condicionales").update(datos_actualizados).eq("id", val_seleccionada).execute()
+                            from database.db_manager import cargar_datos_sistema
+                            cargar_datos_sistema(force_refresh=True)
+                            st.success("¡Registro actualizado correctamente!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error al actualizar: {e}")
+                            
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button("🗑️ Eliminar Registro Definitivamente", type="primary", use_container_width=True):
                     try:
-                        supabase.table("valoraciones_condicionales").delete().eq("id", val_a_eliminar).execute()
+                        supabase.table("valoraciones_condicionales").delete().eq("id", val_seleccionada).execute()
                         from database.db_manager import cargar_datos_sistema
                         cargar_datos_sistema(force_refresh=True)
                         st.success("¡Registro eliminado correctamente!")
