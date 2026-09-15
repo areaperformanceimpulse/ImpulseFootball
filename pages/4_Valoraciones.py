@@ -83,8 +83,7 @@ with tab_informes:
 
                     def badge_hq(val): return f"🟢 {val}" if val >= 0.6 else f"🔴 {val} (Déficit)"
                     def badge_adab(val): return f"🟢 {val}" if val >= 0.9 else f"🔴 {val} (Déficit)"
-                    import plotly.express as px
-                   
+                                      
                     def generar_grafico_radar(val_inicial, val_actual, peso_corp):
                         """
                         Genera un gráfico de radar normalizado (0-100%) respecto a estándares óptimos en fútbol.
