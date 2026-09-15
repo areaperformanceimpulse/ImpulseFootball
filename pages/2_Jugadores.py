@@ -1,9 +1,9 @@
 import streamlit as st
 from database.db_manager import supabase, cargar_datos_sistema
 from utils.math_helpers import aplicar_estilos_base
-from datetime import date
+import pandas as pd
 
-st.set_page_config(page_title="Jugadores - ImpulseFootball", page_icon="👥", layout="wide")
+st.set_page_config(page_title="Jugadores - ImpulseFootball", page_icon="⚽", layout="wide")
 aplicar_estilos_base()
 
 if not st.session_state.get("autenticado", False):
@@ -12,64 +12,104 @@ if not st.session_state.get("autenticado", False):
 
 cargar_datos_sistema()
 
-st.title("👥 Directorio de Deportistas")
+st.title("⚽ Gestión de Deportistas")
 
-tab_academy, tab_elite, tab_promise, tab_mod = st.tabs(["🟢 Academy", "🔵 Elite", "🟣 Promise", "⚙️ Modificar Jugadores"])
+tab_lista, tab_nuevo = st.tabs(["👥 Listado por Categorías", "➕ Registrar Nuevo Deportista"])
 
 jugadores = st.session_state.get("jugadores", [])
 
-def mostrar_lista_programa(prog_nombre):
-    filtrados = [j for j in jugadores if j.get("programa") == prog_nombre]
-    if not filtrados:
-        st.info(f"No hay deportistas en el programa {prog_nombre}.")
+# ==========================================
+# PESTAÑA 1: LISTADO POR CATEGORÍAS Y PERFIL
+# ==========================================
+with tab_lista:
+    st.markdown("### 📋 Plantilla de Deportistas por Categoría")
+    
+    if not jugadores:
+        st.info("No hay deportistas registrados todavía.")
     else:
-        for j in filtrados:
-            with st.container():
-                c1, c2, c3 = st.columns([3, 2, 1])
-                c1.markdown(f"### 👤 {j.get('nombre')}")
-                c2.markdown(f"**Posición:** {j.get('posicion', '-')}")
-                if c3.button("Ver Historial", key=f"per_{j.get('id')}"):
-                    st.session_state.jugador_activo_id = j.get('id')
-                    st.switch_page("pages/4_Valoraciones.py")
-                st.markdown("---")
-
-with tab_academy:
-    st.markdown("### Deportistas - Nivel Academy")
-    mostrar_lista_programa("Academy")
-
-with tab_elite:
-    st.markdown("### Deportistas - Nivel Elite")
-    mostrar_lista_programa("Elite")
-
-with tab_promise:
-    st.markdown("### Deportistas - Nivel Promise")
-    mostrar_lista_programa("Promise")
-
-with tab_mod:
-    st.markdown("### ➕ Registrar Nuevo Deportista")
-    with st.form("form_alta"):
-        c1, c2 = st.columns(2)
-        nombre_n = c1.text_input("Nombre y Apellidos:")
-        prog_n = c2.selectbox("Programa:", ["Academy", "Elite", "Promise"])
-        pos_n = st.selectbox("Posición:", ["Portero", "Lateral", "Central", "Mediocentro", "Extremo", "Delantero"])
-        fn_n = st.date_input("Fecha Nacimiento:", value=date(2005, 1, 1))
+        # Categorías solicitadas
+        categorias_edades = ["Benjamín", "Alevín", "Infantil", "Cadete", "Juvenil", "Sénior", "Sin Categoría"]
         
-        if st.form_submit_button("Guardar en Base de Datos"):
-            if nombre_n.strip():
-                supabase.table("jugadores").insert({
-                    "nombre": nombre_n.strip(), "programa": prog_n, "posicion": pos_n, "fecha_nacimiento": str(fn_n)
-                }).execute()
-                cargar_datos_sistema()
-                st.success(f"Deportista {nombre_n} registrado.")
-                st.rerun()
+        # Creamos pestañas dinámicas por categoría
+        tabs_cat = st.tabs(categorias_edades)
+        
+        for idx, cat in enumerate(categorias_edades):
+            with tabs_cat[idx]:
+                # Filtramos jugadores de esta categoría (manejando nulos o vacíos)
+                jugadores_cat = [
+                    j for j in jugadores 
+                    if (j.get("categoria_edad") == cat) or (cat == "Sin Categoría" and not j.get("categoria_edad"))
+                ]
+                
+                if not jugadores_cat:
+                    st.markdown(f"*No hay jugadores registrados en la categoría {cat}.*")
+                else:
+                    st.markdown(f"#### Categoría: {cat} ({len(jugadores_cat)} jugadores)")
+                    
+                    for jugador in jugadores_cat:
+                        with st.container(border=True):
+                            col_info1, col_info2, col_info3, col_btn = st.columns([2, 2, 2, 1])
+                            
+                            with col_info1:
+                                st.markdown(f"**👤 {jugador.get('nombre')}**")
+                                st.caption(f"Programa: {jugador.get('programa', 'N/D')}")
+                                
+                            with col_info2:
+                                st.markdown(f"🏟️ **Club:** {jugador.get('club', 'No especificado')} ({jugador.get('categoria_club', 'N/D')})")
+                                
+                            with col_info3:
+                                st.markdown(f"📐 **Altura:** {jugador.get('altura', '---')} cm | 🦵 **Pierna:** {jugador.get('pierna_dominante', 'N/D')}")
+                                
+                            with col_btn:
+                                st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
+                                if st.button("📁 Perfil", key=f"btn_perfil_{jugador.get('id')}", use_container_width=True):
+                                    st.info(f"Próximamente: Vista de perfil detallado e histórico de {jugador.get('nombre')}.")
 
-    st.markdown("---")
-    st.markdown("### ❌ Eliminar Deportista")
-    if jugadores:
-        nombres_dict = {j['nombre']: j['id'] for j in jugadores}
-        a_borrar = st.selectbox("Selecciona deportista a eliminar:", list(nombres_dict.keys()))
-        if st.button("Confirmar Eliminación"):
-            supabase.table("jugadores").delete().eq("id", nombres_dict[a_borrar]).execute()
-            cargar_datos_sistema()
-            st.warning(f"Deportista {a_borrar} eliminado.")
-            st.rerun()
+# ==========================================
+# PESTAÑA 2: REGISTRAR NUEVO DEPORTISTA
+# ==========================================
+with tab_nuevo:
+    st.markdown("### 📝 Formulario de Alta de Deportista")
+    
+    with st.form("form_nuevo_jugador"):
+        c1, c2, c3 = st.columns(3)
+        
+        with c1:
+            nombre = st.text_input("Nombre y Apellidos del Deportista:")
+            programa = st.selectbox("Programa Interno:", options=["Academy", "Elite", "Promise"])
+            categoria_edad = st.selectbox(
+                "Categoría de Edad:", 
+                options=["Benjamín", "Alevín", "Infantil", "Cadete", "Juvenil", "Sénior"]
+            )
+            
+        with c2:
+            club = st.text_input("Club Actual / Procedencia:", placeholder="Ej: RC Celta, Coruxo FC...")
+            categoria_club = st.text_input("Categoría del Club:", placeholder="Ej: División de Honor, Liga Autonómica...")
+            
+        with c3:
+            pierna_dominante = st.selectbox("Pierna Dominante:", options=["Derecha", "Izquierda", "Ambidextra"])
+            altura = st.number_input("Altura (cm):", min_value=100.0, max_value=220.0, value=170.0, step=0.5)
+            
+        st.markdown("---")
+        
+        if st.form_submit_button("💾 Guardar Deportista", use_container_width=True):
+            if not nombre.strip():
+                st.error("El nombre del deportista es obligatorio.")
+            else:
+                try:
+                    nuevo_jugador = {
+                        "nombre": nombre.strip(),
+                        "programa": programa,
+                        "categoria_edad": categoria_edad,
+                        "club": club.strip() if club else None,
+                        "categoria_club": categoria_club.strip() if categoria_club else None,
+                        "pierna_dominante": pierna_dominante,
+                        "altura": float(altura)
+                    }
+                    
+                    supabase.table("jugadores").insert(nuevo_jugador).execute()
+                    cargar_datos_sistema()
+                    st.success(f"¡Deportista '{nombre}' registrado correctamente!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al registrar al jugador: {e}")
