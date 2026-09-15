@@ -170,7 +170,7 @@ with tab_informes:
                     st.markdown("---")
 
                     # ---------------------------------------------------------
-                    # 3. FUERZA MÁXIMA ISOMÉTRICA
+                    # 3. FUERZA MÁXIMA ISOMÉTRICA Y FUERZA RELATIVA
                     # ---------------------------------------------------------
                     st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica y Fuerza Relativa")
                     
@@ -201,22 +201,30 @@ with tab_informes:
                     add_i, abd_i = v_data.get('iso_add_cadera_izq', 0), v_data.get('iso_abd_cadera_izq', 0)
                     ratio_adab_d = round(safe_float(add_d) / safe_float(abd_d), 2) if safe_float(abd_d) > 0 else 0
                     ratio_adab_i = round(safe_float(add_i) / safe_float(abd_i), 2) if safe_float(abd_i) > 0 else 0
-
+    
+                    # Fuerzas Relativas (N/kg)
+                    f_rel_ext_d = round(safe_float(ext_d) / peso_actual, 2) if peso_actual > 0 else 0
+                    f_rel_ext_i = round(safe_float(ext_i) / peso_actual, 2) if peso_actual > 0 else 0
                     f_rel_flx_d = round(safe_float(flx_d) / peso_actual, 2) if peso_actual > 0 else 0
                     f_rel_flx_i = round(safe_float(flx_i) / peso_actual, 2) if peso_actual > 0 else 0
-                    def badge_nkg(val): return f"🟢 {val} N/kg" if val >= 3.5 else f"🔴 {val} N/kg (Debilidad base)"
+    
+                    def badge_nkg_ext(val): return f"🟢 {val} N/kg" if val >= 4.5 else f"🔴 {val} N/kg (Débil)"
+                    def badge_nkg_flx(val): return f"🟢 {val} N/kg" if val >= 3.5 else f"🔴 {val} N/kg (Débil)"
                     
-                    st.markdown("**Ratios Clínicos y Fuerza Relativa Isométrica**")
+                    st.markdown("**Ratios Clínicos de Equilibrio**")
                     cr1, cr2, cr3, cr4 = st.columns(4)
-                    with cr1: st.info(f"**Isq/Cuád (D):**\n{badge_hq(ratio_hq_d)}")
-                    with cr2: st.info(f"**Isq/Cuád (I):**\n{badge_hq(ratio_hq_i)}")
-                    with cr3: st.info(f"**F. Relativa Isquio (D):**\n{badge_nkg(f_rel_flx_d)}\n*(Óptimo > 3.5 N/kg)*")
-                    with cr4: st.info(f"**F. Relativa Isquio (I):**\n{badge_nkg(f_rel_flx_i)}\n*(Óptimo > 3.5 N/kg)*")
-
-                    c_adab1, c_adab2 = st.columns(2)
-                    c_adab1.info(f"**Aductores / Abductores (D):** {badge_adab(ratio_adab_d)}")
-                    c_adab2.info(f"**Aductores / Abductores (I):** {badge_adab(ratio_adab_i)}")
-
+                    with cr1: st.info(f"**Isquio/Cuád (D):**\n{badge_hq(ratio_hq_d)}")
+                    with cr2: st.info(f"**Isquio/Cuád (I):**\n{badge_hq(ratio_hq_i)}")
+                    with cr3: st.info(f"**Adu/Abd (D):**\n{badge_adab(ratio_adab_d)}")
+                    with cr4: st.info(f"**Adu/Abd (I):**\n{badge_adab(ratio_adab_i)}")
+    
+                    st.markdown("**Fuerza Relativa Isométrica (N/kg)**")
+                    cf_rel1, cf_rel2, cf_rel3, cf_rel4 = st.columns(4)
+                    with cf_rel1: st.info(f"**Cuádriceps (D):**\n{badge_nkg_ext(f_rel_ext_d)}\n*(Óptimo > 4.5)*")
+                    with cf_rel2: st.info(f"**Cuádriceps (I):**\n{badge_nkg_ext(f_rel_ext_i)}\n*(Óptimo > 4.5)*")
+                    with cf_rel3: st.info(f"**Isquiosural (D):**\n{badge_nkg_flx(f_rel_flx_d)}\n*(Óptimo > 3.5)*")
+                    with cf_rel4: st.info(f"**Isquiosural (I):**\n{badge_nkg_flx(f_rel_flx_i)}\n*(Óptimo > 3.5)*")
+    
                     st.markdown("---")
 
                     # ---------------------------------------------------------
