@@ -84,7 +84,7 @@ with tab_nueva:
                         "comentarios": comentarios
                     }
                     supabase.table("sesiones_entrenamiento").insert(nueva_sesion).execute()
-                    cargar_datos_sistema()
+                    cargar_datos_sistema(force_refresh=True)
                     st.success(f"¡Sesión de {tipo_sesion} programada correctamente para el {fecha_sesion} a las {hora_sesion}!")
                     st.rerun()
                 except Exception as e:
@@ -188,7 +188,7 @@ with tab_historial:
                             "comentarios": e_comentarios
                         }
                         supabase.table("sesiones_entrenamiento").update(datos_actualizados).eq("id", sesion_editar_id).execute()
-                        cargar_datos_sistema()
+                        cargar_datos_sistema(force_refresh=True)
                         st.success("¡Sesión actualizada correctamente con la gestión de asistencias!")
                         st.rerun()
                     except Exception as e:
