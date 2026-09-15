@@ -615,7 +615,7 @@ with tab_nuevo:
                         "comentarios": comentarios
                     }
                     supabase.table("valoraciones_condicionales").insert(nuevo_test).execute()
-                    cargar_datos_sistema()
+                    cargar_datos_sistema(force_refresh=True)
                     st.success("¡Valoración guardada correctamente!")
                     st.rerun()
                 except Exception as e:
