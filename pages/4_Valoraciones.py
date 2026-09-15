@@ -134,8 +134,13 @@ with tab_informes:
                         })
                         
                         fig = px.line_polar(
-                            df_radar, r='Valor', theta='Métrica', color='Test', line_close=True,
-                            color_discrete_map={'Inicial (Base)': '#64748b', 'Actual': '#dc2626'}
+                        fig = px.line_polar(
+                            df_radar, 
+                            r='Valor', 
+                            theta='Métrica', 
+                            color='Test', 
+                            line_close=True,
+                            color_discrete_map={'Inicial (Base)': '#09274e', 'Actual': '#10833d'}  # <--- Pégalo aquí dentro
                         )
                         fig.update_traces(fill='toself', opacity=0.4)
                         # Al estar normalizado a porcentajes, el rango del gráfico va perfectamente de 0 a 100
