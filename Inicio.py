@@ -2,7 +2,7 @@ import streamlit as st
 from database.db_manager import supabase, cargar_datos_sistema
 from utils.math_helpers import aplicar_estilos_base
 
-st.set_page_config(page_title="ImpulseFootball - Condicional", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Impulse Football", page_icon="⚡", layout="wide")
 aplicar_estilos_base()
 
 if "autenticado" not in st.session_state: st.session_state.autenticado = False
@@ -50,18 +50,18 @@ if not st.session_state.autenticado:
 if not st.session_state.get("datos_cargados", False):
     cargar_datos_sistema()
 
-st.title("⚡ Panel de Control Condicional")
+st.title("Inicio")
 st.markdown("---")
 
 total_jugadores = len(st.session_state.jugadores)
 total_vals = len(st.session_state.valoraciones)
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Deportistas Registrados", total_jugadores)
-col2.metric("Valoraciones Totales", total_vals)
-col3.metric("Programas Activos", "Academy, Elite, Promise")
+col1.metric("N.º de Deportistas ", total_jugadores)
+col2.metric("N.º de Valoraciones", total_vals)
+col3.metric("Programas", "Academy, Elite, Promise")
 
-st.markdown("### 🚀 Accesos Directos a Módulos")
+st.markdown("### 🚀 Acceso Directo")
 c1, c2 = st.columns(2)
 with c1:
     if st.button("📅 1. Calendario", use_container_width=True):
