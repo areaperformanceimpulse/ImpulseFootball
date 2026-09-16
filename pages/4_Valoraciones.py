@@ -125,10 +125,7 @@ with tab_informes:
             v_data = df_temp[df_temp['id'] == val_sel_id].iloc[0]
             peso_actual = safe_float(v_data.get('peso_corporal'))
             if peso_actual == 0: peso_actual = 70.0 
-            
-            # --- AQUÍ EMPIEZAN TUS FUNCIONES DE TARJETAS (NO BORRES ESTO) ---
-            # def tarjeta_kpi(titulo, valor, subtitulo=""):
-                    
+                                
                     def tarjeta_kpi(titulo, valor, subtitulo=""):
                         st.markdown(f"""
                         <div style='background-color: white; padding: 15px; border-radius: 8px; border-left: 5px solid #10833d; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; border-right: 1px solid #eee; border-top: 1px solid #eee; border-bottom: 1px solid #eee;'>
