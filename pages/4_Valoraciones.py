@@ -478,10 +478,10 @@ with tab_informes:
                     import plotly.graph_objects as go
                     
                     tests_nombres = [
-                        "FMS Paso Obstáculo", "FMS Zancada", "FMS Mov. Hombro", "FMS Elev. Pierna",
+                        "FMS: Paso de Obstáculo", "FMS: Zancada", "FMS: Movilidad de Hombro", "FMS: Elevación de Pierna",
                         "CMJ Unilateral", "Salto Horizontal", 
-                        "Iso. Extensión (Cuád)", "Iso. Flexión (Isq)", 
-                        "Iso. Aducción", "Iso. Abducción"
+                        "Fuerza ISO de Cuádriceps", "Fuerza ISO de Isquiotibiales", 
+                        "Fuerza ISO de Aductores", "Fuerza ISO de Abductores"
                     ]
                     
                     valores_tornado = []
