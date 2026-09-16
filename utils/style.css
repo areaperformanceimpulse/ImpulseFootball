@@ -53,14 +53,27 @@ h1, h2, h3 {
    ========================================== */
 @media print {
     /* Ocultar barra lateral y menú superior de Streamlit */
-    section[data-testid="stSidebar"] { display: none !important; }
-    header[data-testid="stHeader"] { display: none !important; }
-    div[data-testid="stToolbar"] { display: none !important; }
+    section[data-testid="stSidebar"], header[data-testid="stHeader"], div[data-testid="stToolbar"] { 
+        display: none !important; 
+    }
     
-    /* Forzar que el fondo principal sea blanco y aprovechar el ancho */
+    /* Ocultar el título principal (h1) y la barra de las 3 pestañas */
+    h1, div[role="tablist"], div[data-baseweb="tab-list"] { 
+        display: none !important; 
+    }
+    
+    /* Ocultar TODOS los botones interactivos (incluido el botón de Exportar a PDF) */
+    button { 
+        display: none !important; 
+    }
+    
+    /* Clase para forzar que el contenido pase a la siguiente hoja */
+    .salto-pagina { 
+        page-break-before: always !important; 
+        break-before: page !important; 
+    }
+    
+    /* Forzar fondo blanco y aprovechar todo el ancho del folio */
     .stApp { background-color: white !important; }
     .block-container { max-width: 100% !important; padding: 0 !important; }
-    
-    /* Ocultar el contenedor del botón de imprimir para que no salga en el PDF */
-    .ocultar-en-impresion { display: none !important; }
 }
