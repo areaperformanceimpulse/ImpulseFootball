@@ -1,5 +1,5 @@
 import streamlit as st
-from database.db_manager import supabase, cargar_datos_sistema
+from database.db_manager import get_supabase_client, cargar_datos_sistema
 from utils.math_helpers import aplicar_estilos_base
 from datetime import datetime
 import pandas as pd
