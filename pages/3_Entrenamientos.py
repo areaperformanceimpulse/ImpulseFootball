@@ -56,7 +56,7 @@ with tab_historial:
                     f_entrenador = st.selectbox("Entrenador:", options=lista_entrenadores, index=idx_ent)
                 with sc3:
                     prog_actual = sesion_actual.get('programa')
-                    list_progs = ["Academy", "Elite", "Promise"]
+                    list_progs = ["Academy", "Elite", "Promise", "OffSeason"]
                     idx_prog = list_progs.index(prog_actual) if prog_actual in list_progs else 0
                     f_programa = st.selectbox("Programa:", options=list_progs, index=idx_prog)
                 
