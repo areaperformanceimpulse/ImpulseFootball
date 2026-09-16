@@ -121,52 +121,83 @@ with tab_informes:
                                       
                     def generar_grafico_radar(val_inicial, val_actual, peso_corp):
                         peso = peso_corp if peso_corp > 0 else 70.0
-                        def calcular_porcentajes_optimos(v):
-                            if not v: return [0, 0, 0, 0, 0, 0]
-                            
-                            # 1. Movilidad y Control (FMS Total sobre 33 pts)
-                            fms_total = sum([v.get('fms_sentadilla',0), v.get('fms_paso_obstaculo_der',0), v.get('fms_paso_obstaculo_izq',0),
+                    
+                        # Funciones auxiliares de extracción
+                        def obtener_valor_fms(v):
+                            if not v: return 0
+                            return sum([v.get('fms_sentadilla',0), v.get('fms_paso_obstaculo_der',0), v.get('fms_paso_obstaculo_izq',0),
                                              v.get('fms_zancada_der',0), v.get('fms_zancada_izq',0), v.get('fms_mov_hombro_der',0),
                                              v.get('fms_mov_hombro_izq',0), v.get('fms_elevacion_pierna_der',0), v.get('fms_elevacion_pierna_izq',0),
                                              v.get('fms_estabilidad_tronco',0), v.get('fms_estabilidad_rotatoria',0)])
-                            p_fms = min(100, round((fms_total / 33.0) * 100))
-                            
-                            # 2. Potencia Vertical (CMJ, óptimo 50 cm)
-                            cmj = v.get('cmj_bilateral', 0)
-                            p_cmj = min(100, round((cmj / 50.0) * 100))
-                            
-                            # 3. Potencia Horizontal (Salto Horiz, óptimo 240 cm)
-                            sh_d, sh_i = v.get('salto_horiz_der', 0), v.get('salto_horiz_izq', 0)
-                            sh_prom = (sh_d + sh_i) / 2 if (sh_d > 0 or sh_i > 0) else 0
-                            p_sh = min(100, round((sh_prom / 240.0) * 100))
-                            
-                            # 4. Fuerza Base (Sentadilla 2x Peso corporal)
-                            sq_rm = v.get('rm_sentadilla', 0)
-                            p_sq = min(100, round(((sq_rm / peso) / 2.0) * 100))
-                            
-                            # 5. Prevención Isquiosurales (3.5 N/kg óptimo)
-                            isq_d, isq_i = v.get('iso_flex_rodilla_der', 0), v.get('iso_flex_rodilla_izq', 0)
-                            isq_prom = (isq_d + isq_i) / 2 if (isq_d > 0 or isq_i > 0) else 0
-                            p_isq = min(100, round(((isq_prom / peso) / 3.5) * 100))
-                            
-                            # 6. Prevención Aductores (3.0 N/kg óptimo)
-                            add_d, add_i = v.get('iso_add_cadera_der', 0), v.get('iso_add_cadera_izq', 0)
-                            add_prom = (add_d + add_i) / 2 if (add_d > 0 or add_i > 0) else 0
-                            p_add = min(100, round(((add_prom / peso) / 3.0) * 100))
-                            
-                            return [p_fms, p_cmj, p_sh, p_sq, p_isq, p_add]
                     
-                        # Lista de 6 elementos para el hexágono
+                        def obtener_valor_isq(v, p):
+                            if not v: return 0
+                            isq_d, isq_i = v.get('iso_flex_rodilla_der', 0), v.get('iso_flex_rodilla_izq', 0)
+                            return ((isq_d + isq_i) / 2) / p if p > 0 else 0
+                    
+                        def obtener_valor_add(v, p):
+                            if not v: return 0
+                            add_d, add_i = v.get('iso_add_cadera_der', 0), v.get('iso_add_cadera_izq', 0)
+                            return ((add_d + add_i) / 2) / p if p > 0 else 0
+                    
+                        def obtener_valor_sh(v):
+                            if not v: return 0
+                            sh_d, sh_i = v.get('salto_horiz_der', 0), v.get('salto_horiz_izq', 0)
+                            return (sh_d + sh_i) / 2
+                    
+                        # 1. Extraer valores absolutos iniciales y actuales
+                        fms_ini, fms_act = obtener_valor_fms(val_inicial), obtener_valor_fms(val_actual)
+                        cmj_ini, cmj_act = val_inicial.get('cmj_bilateral', 0), val_actual.get('cmj_bilateral', 0)
+                        sh_ini, sh_act = obtener_valor_sh(val_inicial), obtener_valor_sh(val_actual)
+                        
+                        # Calcular fuerzas relativas usando el peso de cada momento
+                        peso_ini = val_inicial.get('peso_corporal', 70) if val_inicial.get('peso_corporal', 70) > 0 else 70
+                        sq_ini = (val_inicial.get('rm_sentadilla', 0) / peso_ini) if peso_ini > 0 else 0
+                        sq_act = (val_actual.get('rm_sentadilla', 0) / peso) if peso > 0 else 0
+                        
+                        isq_ini, isq_act = obtener_valor_isq(val_inicial, peso_ini), obtener_valor_isq(val_actual, peso)
+                        add_ini, add_act = obtener_valor_add(val_inicial, peso_ini), obtener_valor_add(val_actual, peso)
+                    
+                        # 2. Calcular los máximos personales (el 100% es la mejor marca entre Inicial y Actual)
+                        # Se pone un mínimo de 0.1 o 1 para evitar divisiones por cero si el test está vacío
+                        max_cmj = max(cmj_ini, cmj_act, 1) 
+                        max_sh = max(sh_ini, sh_act, 1)
+                        max_sq = max(sq_ini, sq_act, 0.1)
+                        max_isq = max(isq_ini, isq_act, 0.1)
+                        max_add = max(add_ini, add_act, 0.1)
+                    
+                        # 3. Transformar a porcentajes relativos
+                        p_ini = [
+                            (fms_ini / 33.0) * 100,      # Absoluto (33 pts máx)
+                            (cmj_ini / max_cmj) * 100,   # Relativo a su máximo
+                            (sh_ini / max_sh) * 100,
+                            (sq_ini / max_sq) * 100,
+                            (isq_ini / max_isq) * 100,
+                            (add_ini / max_add) * 100
+                        ]
+                        
+                        p_act = [
+                            (fms_act / 33.0) * 100,
+                            (cmj_act / max_cmj) * 100,
+                            (sh_act / max_sh) * 100,
+                            (sq_act / max_sq) * 100,
+                            (isq_act / max_isq) * 100,
+                            (add_act / max_add) * 100
+                        ]
+                    
+                        # 4. Construir el DataFrame del radar
                         categorias = ['FMS Total', 'CMJ (Vertical)', 'Salto Horiz.', 'F. Sentadilla', 'F. Isquios', 'F. Aductores']
                         df_radar = pd.DataFrame({
                             'Métrica': categorias * 2,
-                            'Valor': calcular_porcentajes_optimos(val_inicial) + calcular_porcentajes_optimos(val_actual),
+                            'Valor': p_ini + p_act,
                             'Test': ['Inicial (Base)'] * 6 + ['Actual'] * 6
                         })
                         
                         fig = px.line_polar(df_radar, r='Valor', theta='Métrica', color='Test', line_close=True, color_discrete_map={'Inicial (Base)': '#09274e', 'Actual': '#10833d'})
                         fig.update_traces(fill='toself', opacity=0.4)
-                        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), height=350, margin=dict(l=20, r=20, t=30, b=20))
+                        
+                        # visible=False quita los números (0, 20, 40...) para dejar el radar más limpio y centrado en la forma
+                        fig.update_layout(polar=dict(radialaxis=dict(visible=False, range=[0, 100])), height=350, margin=dict(l=20, r=20, t=30, b=20))
                         return fig
                     
                     def generar_recomendaciones_automaticas(v_data):
