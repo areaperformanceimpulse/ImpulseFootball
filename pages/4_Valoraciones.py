@@ -205,8 +205,8 @@ with tab_informes:
                     else: ctrl_badge = "🔴 Deficiente"
 
                     c_fms1, c_fms2 = st.columns(2)
-                    c_fms1.info(f"**Clúster Movilidad:** {mov_total} / 12 pts | {mov_badge}\n\n*(Valora la flexibilidad y longitud del tejido)*")
-                    c_fms2.info(f"**Clúster Control Motor:** {ctrl_total} / 21 pts | {ctrl_badge}\n\n*(Valora la estabilización activa de las articulaciones)*")
+                    c_fms1.info(f"**Clúster Movilidad:** {mov_total} / 12 pts | {mov_badge}\n\n*(Movilidad de hombro + Elevación de pierna recta)*")
+                    c_fms2.info(f"**Clúster Control Motor:** {ctrl_total} / 21 pts | {ctrl_badge}\n\n*(Sentadilla + Paso obstáculo + Zancada + Estabilidad tronco + Est. rotatoria)*")
 
                     st.markdown("---")
                     
@@ -223,17 +223,17 @@ with tab_informes:
                     cmj_uni_sum = safe_float(cmj_d) + safe_float(cmj_i)
                     dbl = round(100 * (cmj_bi / cmj_uni_sum) - 100, 1) if cmj_uni_sum > 0 else 0
                     
-                    if dbl < -10: dbl_txt = f"🟢 {dbl}% (Óptimo - Perfil unilateral de alta eficiencia para fútbol)"
-                    elif dbl < 0: dbl_txt = f"🟡 {dbl}% (Adecuado - Eficiencia unilateral estándar)"
-                    else: dbl_txt = f"🔴 {dbl}% (Déficit Unilateral - Riesgo de lentitud en sprints y recortes)"
+                    if dbl < -10: dbl_txt = f"🟢 {dbl}% (Óptimo)"
+                    elif dbl < 0: dbl_txt = f"🟡 {dbl}% (Adecuado)"
+                    else: dbl_txt = f"🔴 {dbl}% (Déficit unilateral)"
                     
                     sh_promedio = (safe_float(v_data.get('salto_horiz_der', 0)) + safe_float(v_data.get('salto_horiz_izq', 0))) / 2
                     cmj_uni_promedio = cmj_uni_sum / 2
                     ratio_vectores = round(sh_promedio / cmj_uni_promedio, 2) if cmj_uni_promedio > 0 else 0
                     
-                    if ratio_vectores > 4.5: perfil_vector = "🏃 Dominancia Horizontal (Perfil Acelerador - 1ºs metros)"
-                    elif ratio_vectores > 0 and ratio_vectores < 3.5: perfil_vector = "🚀 Dominancia Vertical (Perfil Aéreo y Velocidad Punta)"
-                    elif ratio_vectores >= 3.5 and ratio_vectores <= 4.5: perfil_vector = "⚖️ Perfil Vectorial Equilibrado"
+                    if ratio_vectores > 4.5: perfil_vector = "🏃 Dominancia Horizontal (Perfil Acelerador)"
+                    elif ratio_vectores >= 3.5 and ratio_vectores <= 4.5: perfil_vector = "⚖️ Perfil Equilibrado"
+                    elif ratio_vectores > 0 and ratio_vectores < 3.5: perfil_vector = "🚀 Dominancia Vertical (Salto y Velocidad Punta)"
                     else: perfil_vector = "Datos insuficientes"
                     
                     ca1, ca2, ca3 = st.columns(3)
@@ -253,35 +253,41 @@ with tab_informes:
                     ext_d, ext_i = v_data.get('iso_ext_rodilla_der', 0), v_data.get('iso_ext_rodilla_izq', 0)
                     flx_d, flx_i = v_data.get('iso_flex_rodilla_der', 0), v_data.get('iso_flex_rodilla_izq', 0)
                     
+                    add_d, abd_d = v_data.get('iso_add_cadera_der', 0), v_data.get('iso_abd_cadera_der', 0)
+                    add_i, abd_i = v_data.get('iso_add_cadera_izq', 0), v_data.get('iso_abd_cadera_izq', 0)
+                    
                     asi_ext = calcular_asimetria(ext_d, ext_i)
                     asi_flx = calcular_asimetria(flx_d, flx_i)
+                    asi_add = calcular_asimetria(add_d, add_i)
+                    asi_abd = calcular_asimetria(abd_d, abd_i)
                     
                     cai1, cai2 = st.columns(2)
-                    cai1.info(f"**Asimetría Extensión de Cuádriceps:** {badge_asi_detallado(asi_ext, ext_d, ext_i)}")
-                    cai2.info(f"**Asimetría Flexión de Isquiosurales:** {badge_asi_detallado(asi_flx, flx_d, flx_i)}")
+                    cai1.info(f"**Asimetría Extensión Cuádriceps:** {badge_asi_detallado(asi_ext, ext_d, ext_i)}")
+                    cai2.info(f"**Asimetría Flexión Isquiosurales:** {badge_asi_detallado(asi_flx, flx_d, flx_i)}")
+                    
+                    cai3, cai4 = st.columns(2)
+                    cai3.info(f"**Asimetría Aducción Cadera:** {badge_asi_detallado(asi_add, add_d, add_i)}")
+                    cai4.info(f"**Asimetría Abducción Cadera:** {badge_asi_detallado(asi_abd, abd_d, abd_i)}")
                     
                     ratio_hq_d = round(safe_float(flx_d) / safe_float(ext_d), 2) if safe_float(ext_d) > 0 else 0
                     ratio_hq_i = round(safe_float(flx_i) / safe_float(ext_i), 2) if safe_float(ext_i) > 0 else 0
-                    
-                    add_d, abd_d = v_data.get('iso_add_cadera_der', 0), v_data.get('iso_abd_cadera_der', 0)
-                    add_i, abd_i = v_data.get('iso_add_cadera_izq', 0), v_data.get('iso_abd_cadera_izq', 0)
                     ratio_adab_d = round(safe_float(add_d) / safe_float(abd_d), 2) if safe_float(abd_d) > 0 else 0
                     ratio_adab_i = round(safe_float(add_i) / safe_float(abd_i), 2) if safe_float(abd_i) > 0 else 0
-    
+                    
                     f_rel_ext_d = round(safe_float(ext_d) / peso_actual, 2) if peso_actual > 0 else 0
                     f_rel_ext_i = round(safe_float(ext_i) / peso_actual, 2) if peso_actual > 0 else 0
                     f_rel_flx_d = round(safe_float(flx_d) / peso_actual, 2) if peso_actual > 0 else 0
                     f_rel_flx_i = round(safe_float(flx_i) / peso_actual, 2) if peso_actual > 0 else 0
-    
+                    
                     def badge_nkg_ext(val): return f"🟢 {val} N/kg" if val >= 4.5 else f"🔴 {val} N/kg (Débil)"
                     def badge_nkg_flx(val): return f"🟢 {val} N/kg" if val >= 3.5 else f"🔴 {val} N/kg (Débil)"
                     
                     st.markdown("**Ratios Clínicos de Equilibrio**")
                     cr1, cr2, cr3, cr4 = st.columns(4)
-                    with cr1: st.info(f"**Isquio/Cuád (D):**\n{badge_hq(ratio_hq_d)}")
-                    with cr2: st.info(f"**Isquio/Cuád (I):**\n{badge_hq(ratio_hq_i)}")
-                    with cr3: st.info(f"**Adu/Abd (D):**\n{badge_adab(ratio_adab_d)}")
-                    with cr4: st.info(f"**Adu/Abd (I):**\n{badge_adab(ratio_adab_i)}")
+                    with cr1: st.info(f"**Isquio/Cuád (D):**\n{badge_hq(ratio_hq_d)}\n*(Óptimo > 0.6)*")
+                    with cr2: st.info(f"**Isquio/Cuád (I):**\n{badge_hq(ratio_hq_i)}\n*(Óptimo > 0.6)*")
+                    with cr3: st.info(f"**Adu/Abd (D):**\n{badge_adab(ratio_adab_d)}\n*(Óptimo > 0.9)*")
+                    with cr4: st.info(f"**Adu/Abd (I):**\n{badge_adab(ratio_adab_i)}\n*(Óptimo > 0.9)*")
     
                     st.markdown("**Fuerza Relativa Isométrica (N/kg)**")
                     cf_rel1, cf_rel2, cf_rel3, cf_rel4 = st.columns(4)
