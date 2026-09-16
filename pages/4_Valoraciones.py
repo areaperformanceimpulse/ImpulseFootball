@@ -53,39 +53,81 @@ def calcular_num_valoracion(jugador_id, temporada_str, vals_existentes, id_exclu
 # PESTAÑA 1: INFORMES DE VALORACIONES
 # ==========================================
 with tab_informes:
-    st.markdown("### 📈 Perfil Individual")
+    st.markdown("### 📈 Informes de Valoraciones y Perfil Individual")
     
     if not jugadores or not valoraciones:
         st.info("No hay datos suficientes para mostrar informes.")
     else:
-        cf1, cf2, cf3 = st.columns(3)
-        with cf1: jug_sel_prog = st.selectbox("Deportista:", options=list(mapa_jugadores.keys()), format_func=lambda x: mapa_jugadores[x])
-        
-        vals_jugador = [v for v in valoraciones if v.get('jugador_id') == jug_sel_prog]
-        
-        if not vals_jugador:
-            st.warning("Este deportista todavía no tiene valoraciones registradas.")
-        else:
-            df_pj = pd.DataFrame(vals_jugador)
-            temporadas = df_pj['temporada'].dropna().unique().tolist()
+        # 1. Obtener todas las temporadas únicas de las valoraciones
+        temporadas_disponibles = sorted(list(set([v.get('temporada') for v in valoraciones if v.get('temporada')])), reverse=True)
+        if not temporadas_disponibles:
+            temporadas_disponibles = ["26/27"]
             
-            with cf2: temp_sel = st.selectbox("Temporada:", options=temporadas)
-            df_temp = df_pj[df_pj['temporada'] == temp_sel]
-            
-            if df_temp.empty:
-                st.warning("No hay valoraciones en esta temporada.")
+        lista_programas = ["Academy", "Elite", "Promise", "OffSeason"]
+
+        # Maquetación en 4 columnas
+        cf1, cf2, cf3, cf4 = st.columns(4)
+        
+        # Filtro 1: Temporada
+        with cf1: temp_sel = st.selectbox("1. Temporada:", options=temporadas_disponibles)
+        
+        # Filtro 2: Programa
+        with cf2: prog_sel = st.selectbox("2. Programa:", options=["Todos"] + lista_programas)
+        
+        # Lógica: Filtrar jugadores que tienen valoraciones en esta temporada y pertenecen al programa
+        jugadores_validos = {}
+        for j in jugadores:
+            tiene_vals = any(v.get('jugador_id') == j['id'] and v.get('temporada') == temp_sel for v in valoraciones)
+            if tiene_vals:
+                historial = j.get('historial_temporadas', {})
+                prog_jugador = None
+                
+                # Buscamos su programa en el historial de esa temporada específica
+                if isinstance(historial, dict) and temp_sel in historial:
+                    prog_jugador = historial[temp_sel].get('programa')
+                if not prog_jugador:
+                    prog_jugador = j.get('programa') # Fallback por si acaso
+                    
+                if prog_sel == "Todos" or prog_jugador == prog_sel:
+                    jugadores_validos[j['id']] = j['nombre']
+
+        # Ordenar alfabéticamente para que sea fácil buscarlos
+        jugadores_validos = dict(sorted(jugadores_validos.items(), key=lambda item: item[1]))
+
+        # Filtro 3: Deportista
+        with cf3:
+            if not jugadores_validos:
+                jug_sel = st.selectbox("3. Deportista:", options=["Sin datos"])
             else:
-                dicc_vals = {row['id']: f"{row['numero_valoracion']} ({row['fecha']})" for idx, row in df_temp.iterrows()}
+                jug_sel = st.selectbox("3. Deportista:", options=list(jugadores_validos.keys()), format_func=lambda x: jugadores_validos[x])
+        
+        # Filtro 4: Nº de Valoración
+        with cf4:
+            val_sel_id = None
+            if not jugadores_validos:
+                st.selectbox("4. Nº Valoración:", options=["-"])
+            else:
+                vals_jugador_temp = [v for v in valoraciones if v.get('jugador_id') == jug_sel and v.get('temporada') == temp_sel]
+                df_temp = pd.DataFrame(vals_jugador_temp)
                 
-                with cf3: 
-                    val_sel_id = st.selectbox("Número de Valoración:", options=[None] + list(dicc_vals.keys()), format_func=lambda x: dicc_vals[x] if x else "Seleccione para generar...")
-                
-                if val_sel_id is None:
-                    st.info("👆 Selecciona una valoración en el menú superior para desplegar el informe exhaustivo.")
+                if df_temp.empty:
+                    st.selectbox("4. Nº Valoración:", options=["-"])
                 else:
-                    v_data = df_temp[df_temp['id'] == val_sel_id].iloc[0]
-                    peso_actual = safe_float(v_data.get('peso_corporal'))
-                    if peso_actual == 0: peso_actual = 70.0 
+                    dicc_vals = {row['id']: f"Val. {row['numero_valoracion']} ({row['fecha']})" for idx, row in df_temp.iterrows()}
+                    val_sel_id = st.selectbox("4. Nº Valoración:", options=[None] + list(dicc_vals.keys()), format_func=lambda x: dicc_vals[x] if x else "Seleccione informe...")
+        
+        # Mostrar el estado o el informe
+        if not jugadores_validos:
+            st.warning(f"No hay deportistas con valoraciones registradas en la temporada {temp_sel} para el programa {prog_sel}.")
+        elif val_sel_id is None:
+            st.info("👆 Selecciona un deportista y su valoración en el menú superior para desplegar el informe exhaustivo.")
+        else:
+            v_data = df_temp[df_temp['id'] == val_sel_id].iloc[0]
+            peso_actual = safe_float(v_data.get('peso_corporal'))
+            if peso_actual == 0: peso_actual = 70.0 
+            
+            # --- AQUÍ EMPIEZAN TUS FUNCIONES DE TARJETAS (NO BORRES ESTO) ---
+            # def tarjeta_kpi(titulo, valor, subtitulo=""):
                     
                     def tarjeta_kpi(titulo, valor, subtitulo=""):
                         st.markdown(f"""
