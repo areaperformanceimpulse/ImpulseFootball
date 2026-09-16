@@ -1,11 +1,13 @@
 import streamlit as st
-from database.db_manager import supabase, cargar_datos_sistema
+from database.db_manager import get_supabase_client, cargar_datos_sistema
 from utils.math_helpers import aplicar_estilos_base
 from datetime import date, datetime
 import pandas as pd
 
 st.set_page_config(page_title="Calendario", page_icon="📅", layout="wide")
 aplicar_estilos_base()
+
+supabase = get_supabase_client()
 
 if not st.session_state.get("autenticado", False):
     st.warning("Sesión caducada.")
