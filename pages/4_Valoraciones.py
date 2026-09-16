@@ -762,52 +762,60 @@ with tab_nuevo:
                     st.write("**Vista previa de los primeros registros leídos:**")
                     st.dataframe(df_import.head(3))
                     
-                    
                     st.markdown("---")
-                    # Nuevo checkbox para auto-crear
-                    auto_crear = st.checkbox("🤖 Crear automáticamente a los deportistas que no existan (se asignarán a 'OffSeason' con datos biológicos estándar).")
+                    
+                    # 1. Configuración de Auto-creación Mágica
+                    auto_crear = st.checkbox("🤖 Crear automáticamente a los deportistas que no existan en la base de datos.")
+                    programa_auto = None
+                    if auto_crear:
+                        programa_auto = st.selectbox("Asignar estos nuevos deportistas al programa:", ["Academy", "Elite", "Promise", "OffSeason"])
                     
                     if st.button("🚀 Subir e Importar Datos", type="primary", use_container_width=True):
                         registros_exitosos = 0
                         errores = []
                         
+                        # 3. Ordenar cronológicamente para asignar bien los números de valoración (1, 2, 3...)
+                        try:
+                            df_import[MAPEO["fecha"]] = pd.to_datetime(df_import[MAPEO["fecha"]], errors='coerce')
+                            df_import = df_import.sort_values(by=MAPEO["fecha"], ascending=True)
+                        except Exception as e:
+                            st.warning("Aviso: Revisa el formato de la columna FECHA en tu Excel.")
+
                         for idx, row in df_import.iterrows():
+                            # Ignorar filas donde el nombre esté vacío
+                            if pd.isna(row.get(MAPEO["nombre"])): continue
+                                
                             nombre_excel = str(row.get(MAPEO["nombre"], "")).strip()
-                            # Buscamos al jugador en la caché actual
+                            
+                            # 4 y 5. Busca primero si el jugador ya existe (sin importar el programa en el que esté ahora)
                             jugador_db = next((j for j in jugadores if j['nombre'].strip().lower() == nombre_excel.lower()), None)
                             
-                            # ==========================================
-                            # LÓGICA DE AUTO-CREACIÓN
-                            # ==========================================
                             if not jugador_db:
                                 if auto_crear:
                                     try:
-                                        # Calculamos la temporada a la que pertenece el test para registrarlo ahí
-                                        fecha_obj = pd.to_datetime(row.get(MAPEO["fecha"])).date()
-                                        temp_calc = obtener_temporada(fecha_obj)
+                                        fecha_obj = row[MAPEO["fecha"]].date()
+                                        temp_calc = obtener_temporada(fecha_obj) # 2. Temporada basada en la fecha del test
                                         
                                         nuevo_jugador = {
                                             "nombre": nombre_excel,
                                             "altura": 170.0,
                                             "pierna_dominante": "Derecha",
                                             "brazo_dominante": "Derecho",
-                                            "programa": "OffSeason",
+                                            "programa": programa_auto,
                                             "categoria_edad": "Sénior",
                                             "historial_temporadas": {
                                                 temp_calc: {
-                                                    "programa": "OffSeason",
+                                                    "programa": programa_auto,
                                                     "club": "Histórico Excel",
                                                     "categoria_club": "N/D",
                                                     "categoria_edad": "Sénior"
                                                 }
                                             }
                                         }
-                                        # Insertamos en Supabase y recuperamos el ID generado
                                         res = supabase.table("jugadores").insert(nuevo_jugador).execute()
                                         
                                         if res.data:
                                             jugador_db = res.data[0]
-                                            # Lo añadimos a la lista local para que si sale en la siguiente fila del Excel, ya lo detecte
                                             jugadores.append(jugador_db) 
                                         else:
                                             errores.append(f"Fila {idx+2}: Falló la auto-creación del jugador '{nombre_excel}'.")
@@ -818,30 +826,29 @@ with tab_nuevo:
                                 else:
                                     errores.append(f"Fila {idx+2}: No se encontró al jugador '{nombre_excel}' (y la auto-creación está desactivada).")
                                     continue
-                            # ==========================================
+                                
                             try:
-                                fecha_obj = pd.to_datetime(row.get(MAPEO["fecha"])).date()
+                                fecha_obj = row[MAPEO["fecha"]].date()
                                 temp_calc = obtener_temporada(fecha_obj)
                                 num_val_calc = calcular_num_valoracion(jugador_db['id'], temp_calc, valoraciones)
                                 
-                                # Función para sanear vacíos de excel
                                 def s(val): return 0.0 if pd.isna(val) else float(val)
                                 
-                                # Lógica inteligente: D/ND -> Der/Izq según perfil del jugador
+                                # 6. Gestión del peso vacío (si es <= 30, asume 70 kg)
+                                peso_crudo = s(row.get(MAPEO["peso"]))
+                                peso_final = peso_crudo if peso_crudo > 30.0 else 70.0
+                                
                                 def map_d_nd(val_d, val_nd, is_brazo=False):
                                     dom = jugador_db.get('brazo_dominante' if is_brazo else 'pierna_dominante', 'Derecho' if is_brazo else 'Derecha')
-                                    # Si es zurdo, invertimos el guardado en base de datos
                                     if dom in ['Izquierdo', 'Izquierda']:
                                         return {"der": s(val_nd), "izq": s(val_d)}
                                     return {"der": s(val_d), "izq": s(val_nd)}
 
-                                # Extracción de perfiles F-V
                                 p_sq = [s(row.get(col)) for col in MAPEO["sq_kg"]]
                                 v_sq = [s(row.get(col)) for col in MAPEO["sq_v"]]
                                 p_rdl = [s(row.get(col)) for col in MAPEO["rdl_kg"]]
                                 v_rdl = [s(row.get(col)) for col in MAPEO["rdl_v"]]
 
-                                # Cálculo de 1RM automático
                                 def calcular_rm_final_import(pesos, vels):
                                     validas = [(pesos[i], vels[i]) for i in range(5) if vels[i] > 0 and pesos[i] > 0]
                                     if validas:
@@ -866,8 +873,7 @@ with tab_nuevo:
                                     "temporada": temp_calc,
                                     "numero_valoracion": num_val_calc,
                                     "lesion": "Sí" if str(row.get(MAPEO["lesion"], "")).lower().strip() in ["sí", "si", "yes", "s", "1"] else "No",
-                                    "peso_corporal": s(row.get(MAPEO["peso"])),
-                                    # FMS
+                                    "peso_corporal": peso_final,
                                     "fms_mov_hombro_der": int(fms1["der"]), "fms_mov_hombro_izq": int(fms1["izq"]),
                                     "fms_sentadilla": int(s(row.get(MAPEO["fms2"]))),
                                     "fms_elevacion_pierna_der": int(fms3["der"]), "fms_elevacion_pierna_izq": int(fms3["izq"]),
@@ -875,16 +881,13 @@ with tab_nuevo:
                                     "fms_zancada_der": int(fms5["der"]), "fms_zancada_izq": int(fms5["izq"]),
                                     "fms_estabilidad_tronco": int(s(row.get(MAPEO["fms6"]))),
                                     "fms_estabilidad_rotatoria": int(s(row.get(MAPEO["fms7"]))),
-                                    # Salto
                                     "cmj_bilateral": s(row.get(MAPEO["cmj_bi"])),
                                     "cmj_uni_der": cmj["der"], "cmj_uni_izq": cmj["izq"],
                                     "salto_horiz_der": sh["der"], "salto_horiz_izq": sh["izq"],
-                                    # Isometría
                                     "iso_ext_rodilla_der": iso_ext["der"], "iso_ext_rodilla_izq": iso_ext["izq"],
                                     "iso_flex_rodilla_der": iso_flx["der"], "iso_flex_rodilla_izq": iso_flx["izq"],
                                     "iso_add_cadera_der": iso_add["der"], "iso_add_cadera_izq": iso_add["izq"],
                                     "iso_abd_cadera_der": iso_abd["der"], "iso_abd_cadera_izq": iso_abd["izq"],
-                                    # RM y Perfiles (Cálculo y guardado)
                                     "rm_sentadilla": float(calcular_rm_final_import(p_sq, v_sq)),
                                     "rm_peso_muerto": float(calcular_rm_final_import(p_rdl, v_rdl)),
                                     "perfil_sentadilla": {"kg": p_sq, "vel": v_sq},
@@ -899,7 +902,6 @@ with tab_nuevo:
                             except Exception as e_row:
                                 errores.append(f"Fila {idx+2} ({nombre_excel}): Error de formato - {e_row}")
                                 
-                        # --- SUSTITUYE ESTA PARTE FINAL ---
                         cargar_datos_sistema(force_refresh=True)
                         
                         if registros_exitosos > 0:
@@ -911,11 +913,9 @@ with tab_nuevo:
                                 st.write(f"- {err}")
                             st.info("💡 Por favor, corrige estos errores en tu Excel y vuelve a subir solo las filas que han fallado.")
                         else:
-                            # Solo recargamos automáticamente si TODO ha ido perfecto
                             import time
                             time.sleep(2)
                             st.rerun()
-                        # -----------------------------------
                 except Exception as e:
                     st.error(f"Error general al procesar el Excel: {e}")
 
