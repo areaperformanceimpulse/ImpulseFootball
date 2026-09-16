@@ -609,7 +609,7 @@ with tab_nuevo:
                         
                         for idx, row in df_import.iterrows():
                             nombre_excel = str(row.get(MAPEO["nombre"], "")).strip()
-                            jugador_db = next((j for j in jugadores if j['nombre'].lower() == nombre_excel.lower()), None)
+                            jugador_db = next((j for j in jugadores if j['nombre'].strip().lower() == nombre_excel.lower()), None)
                             
                             if not jugador_db:
                                 errores.append(f"Fila {idx+2}: No se encontró al jugador '{nombre_excel}'.")
