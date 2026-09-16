@@ -14,7 +14,6 @@ cargar_datos_sistema()
 
 st.title("⚽ Gestión de Deportistas")
 
-# Añadimos la tercera pestaña para modificar
 tab_lista, tab_nuevo, tab_editar = st.tabs(["👥 Listado por Programas", "➕ Registrar Nuevo Deportista", "✏️ Modificar Deportista"])
 
 jugadores = st.session_state.get("jugadores", [])
@@ -40,24 +39,22 @@ with tab_lista:
                 else:
                     st.markdown(f"#### Programa: {prog} ({len(jugadores_prog)} jugadores)")
                     
-                    for jugador in jugadores_prog:
-                        with st.container(border=True):
-                            col_info1, col_info2, col_info3, col_btn = st.columns([2, 2, 2, 1])
-                            
-                            with col_info1:
-                                st.markdown(f"**👤 {jugador.get('nombre')}**")
-                                st.caption(f"Categoría: {jugador.get('categoria_edad', 'N/D')}")
-                                
-                            with col_info2:
-                                st.markdown(f"🏟️ **Club:** {jugador.get('club', 'No especificado')} ({jugador.get('categoria_club', 'N/D')})")
-                                
-                            with col_info3:
-                                st.markdown(f"📐 **Altura:** {jugador.get('altura', '---')} cm | 🦵 **Pierna:** {jugador.get('pierna_dominante', 'N/D')}")
-                                
-                            with col_btn:
-                                st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
-                                if st.button("📁 Perfil", key=f"btn_perfil_{jugador.get('id')}", use_container_width=True):
-                                    st.info(f"Próximamente: Vista de perfil detallado e histórico de {jugador.get('nombre')}.")
+                    # Sistema de cuadrícula (grid) de 4 columnas para tarjetas más estrechas
+                    cols_per_row = 4
+                    for i in range(0, len(jugadores_prog), cols_per_row):
+                        cols = st.columns(cols_per_row)
+                        for j, col in enumerate(cols):
+                            if i + j < len(jugadores_prog):
+                                jugador = jugadores_prog[i + j]
+                                with col:
+                                    with st.container(border=True):
+                                        # Diseño de tarjeta vertical
+                                        st.markdown("<div style='text-align: center; font-size: 4rem; margin-bottom: 10px;'>👤</div>", unsafe_allow_html=True)
+                                        st.markdown(f"<div style='text-align: center;'><span style='font-size: 1.2rem; font-weight: 800; color: #09274e;'>{jugador.get('nombre')}</span><br><span style='font-size: 0.85rem; color: #64748b;'>{jugador.get('club', 'Sin club')} | {jugador.get('categoria_edad', 'N/D')}</span></div>", unsafe_allow_html=True)
+                                        
+                                        st.markdown("<div style='height: 15px'></div>", unsafe_allow_html=True)
+                                        if st.button("📁 Perfil", key=f"btn_perfil_{jugador.get('id')}", use_container_width=True):
+                                            st.info(f"Próximamente: Vista de perfil detallado e histórico de {jugador.get('nombre')}.")
 
 # ==========================================
 # PESTAÑA 2: REGISTRAR NUEVO DEPORTISTA
@@ -66,23 +63,26 @@ with tab_nuevo:
     st.markdown("### 📝 Formulario de Alta de Deportista")
     
     with st.form("form_nuevo_jugador"):
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3, c4 = st.columns(4)
         
         with c1:
-            nombre = st.text_input("Nombre y Apellidos del Deportista:")
+            nombre = st.text_input("Nombre y Apellidos:")
             programa = st.selectbox("Programa Interno:", options=["Academy", "Elite", "Promise"])
+            
+        with c2:
+            club = st.text_input("Club Actual / Procedencia:", placeholder="Ej: RC Celta...")
+            categoria_club = st.text_input("Categoría del Club:", placeholder="Ej: División de Honor...")
+            
+        with c3:
             categoria_edad = st.selectbox(
                 "Categoría de Edad:", 
                 options=["Benjamín", "Alevín", "Infantil", "Cadete", "Juvenil", "Sénior"]
             )
-            
-        with c2:
-            club = st.text_input("Club Actual / Procedencia:", placeholder="Ej: RC Celta, Coruxo FC...")
-            categoria_club = st.text_input("Categoría del Club:", placeholder="Ej: División de Honor, Liga Autonómica...")
-            
-        with c3:
-            pierna_dominante = st.selectbox("Pierna Dominante:", options=["Derecha", "Izquierda", "Ambidextra"])
             altura = st.number_input("Altura (cm):", min_value=100.0, max_value=220.0, value=170.0, step=0.5)
+
+        with c4:
+            pierna_dominante = st.selectbox("Pierna Dominante:", options=["Derecha", "Izquierda", "Ambidextra"])
+            brazo_dominante = st.selectbox("Brazo Dominante:", options=["Derecho", "Izquierdo", "Ambidextro"])
             
         st.markdown("---")
         
@@ -98,6 +98,7 @@ with tab_nuevo:
                         "club": club.strip() if club else None,
                         "categoria_club": categoria_club.strip() if categoria_club else None,
                         "pierna_dominante": pierna_dominante,
+                        "brazo_dominante": brazo_dominante,
                         "altura": float(altura)
                     }
                     
@@ -109,19 +110,18 @@ with tab_nuevo:
                     st.error(f"Error al registrar al jugador: {e}")
 
 # ==========================================
-# PESTAÑA 3: MODIFICAR DEPORTISTA
+# PESTAÑA 3: MODIFICAR / ELIMINAR DEPORTISTA
 # ==========================================
 with tab_editar:
-    st.markdown("### ✏️ Modificar Datos de Deportista")
+    st.markdown("### ✏️ Modificar o Eliminar Deportista")
     
     if not jugadores:
         st.info("No hay deportistas para modificar.")
     else:
-        # Diccionario para seleccionar jugador por ID y mostrar su nombre y programa
         opciones_jugadores = {j['id']: f"{j.get('nombre')} ({j.get('programa')} - {j.get('categoria_edad', 'Sin cat')})" for j in jugadores}
         
         jugador_editar_id = st.selectbox(
-            "Selecciona al deportista a modificar:", 
+            "Selecciona al deportista a gestionar:", 
             options=list(opciones_jugadores.keys()), 
             format_func=lambda x: opciones_jugadores[x]
         )
@@ -130,7 +130,6 @@ with tab_editar:
         
         if jugador_actual:
             with st.form("form_editar_jugador"):
-                # Índices predeterminados para los selects según los datos actuales
                 list_prog = ["Academy", "Elite", "Promise"]
                 idx_prog = list_prog.index(jugador_actual.get('programa')) if jugador_actual.get('programa') in list_prog else 0
                 
@@ -142,20 +141,27 @@ with tab_editar:
                 pierna_actual = jugador_actual.get('pierna_dominante')
                 idx_pierna = list_pierna.index(pierna_actual) if pierna_actual in list_pierna else 0
 
-                ec1, ec2, ec3 = st.columns(3)
+                list_brazo = ["Derecho", "Izquierdo", "Ambidextro"]
+                brazo_actual = jugador_actual.get('brazo_dominante')
+                idx_brazo = list_brazo.index(brazo_actual) if brazo_actual in list_brazo else 0
+
+                ec1, ec2, ec3, ec4 = st.columns(4)
                 
                 with ec1:
                     e_nombre = st.text_input("Nombre y Apellidos:", value=jugador_actual.get('nombre', ''))
                     e_programa = st.selectbox("Programa Interno:", options=list_prog, index=idx_prog)
-                    e_categoria_edad = st.selectbox("Categoría de Edad:", options=list_cat, index=idx_cat)
                     
                 with ec2:
-                    e_club = st.text_input("Club Actual / Procedencia:", value=jugador_actual.get('club', '') or '')
+                    e_club = st.text_input("Club Actual:", value=jugador_actual.get('club', '') or '')
                     e_categoria_club = st.text_input("Categoría del Club:", value=jugador_actual.get('categoria_club', '') or '')
                     
                 with ec3:
-                    e_pierna = st.selectbox("Pierna Dominante:", options=list_pierna, index=idx_pierna)
+                    e_categoria_edad = st.selectbox("Categoría de Edad:", options=list_cat, index=idx_cat)
                     e_altura = st.number_input("Altura (cm):", min_value=100.0, max_value=220.0, value=float(jugador_actual.get('altura', 170.0) or 170.0), step=0.5)
+
+                with ec4:
+                    e_pierna = st.selectbox("Pierna Dominante:", options=list_pierna, index=idx_pierna)
+                    e_brazo = st.selectbox("Brazo Dominante:", options=list_brazo, index=idx_brazo)
                     
                 st.markdown("---")
                 
@@ -171,6 +177,7 @@ with tab_editar:
                                 "club": e_club.strip() if e_club else None,
                                 "categoria_club": e_categoria_club.strip() if e_categoria_club else None,
                                 "pierna_dominante": e_pierna,
+                                "brazo_dominante": e_brazo,
                                 "altura": float(e_altura)
                             }
                             
@@ -180,3 +187,14 @@ with tab_editar:
                             st.rerun()
                         except Exception as e:
                             st.error(f"Error al actualizar el deportista: {e}")
+
+            # Botón de eliminación fuera del form para no interferir con la actualización
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🗑️ Eliminar Deportista Definitivamente", type="primary", use_container_width=True):
+                try:
+                    supabase.table("jugadores").delete().eq("id", jugador_editar_id).execute()
+                    cargar_datos_sistema(force_refresh=True)
+                    st.success("¡Deportista eliminado correctamente!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al eliminar al deportista. Es posible que tenga valoraciones o sesiones asociadas que debas borrar primero: {e}")
