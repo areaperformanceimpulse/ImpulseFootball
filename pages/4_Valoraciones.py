@@ -186,7 +186,7 @@ with tab_informes:
                         ]
                     
                         # 4. Construir el DataFrame del radar
-                        categorias = ['FMS Total', 'CMJ (Vertical)', 'Salto Horiz.', 'F. Sentadilla', 'F. Isquios', 'F. Aductores']
+                        categorias = ['FMS Total', 'CMJ)', 'Salto Horizontal', '1RM SQ', 'F. Isquios', 'F. Aductores']
                         df_radar = pd.DataFrame({
                             'Métrica': categorias * 2,
                             'Valor': p_ini + p_act,
@@ -472,6 +472,93 @@ with tab_informes:
                     
                     st.info(f"**Análisis de Tendencia Direccional:** {dom_txt} | **Eslabón Débil a compensar:** {eslabon_txt}")
 
+                    # ==========================================
+                    # GRÁFICO TORNADO (MARIPOSA) DE ASIMETRÍAS
+                    # ==========================================
+                    import plotly.graph_objects as go
+                    
+                    tests_nombres = [
+                        "FMS Paso Obstáculo", "FMS Zancada", "FMS Mov. Hombro", "FMS Elev. Pierna",
+                        "CMJ Unilateral", "Salto Horizontal", 
+                        "Iso. Extensión (Cuád)", "Iso. Flexión (Isq)", 
+                        "Iso. Aducción", "Iso. Abducción"
+                    ]
+                    
+                    valores_tornado = []
+                    textos_tornado = []
+                    colores_tornado = []
+                    
+                    for i, (der, izq) in enumerate(pruebas_uni):
+                        d, i_val = safe_float(der), safe_float(izq)
+                        max_val = max(d, i_val)
+                        
+                        if max_val == 0:
+                            valores_tornado.append(0)
+                            textos_tornado.append("0%")
+                            colores_tornado.append('#64748b') # Gris (Empate/Sin datos)
+                        else:
+                            diff = (abs(d - i_val) / max_val) * 100
+                            if d > i_val:
+                                valores_tornado.append(diff)
+                                textos_tornado.append(f"{diff:.1f}%")
+                                colores_tornado.append('#10833d') # Verde (Dominancia Derecha)
+                            elif i_val > d:
+                                valores_tornado.append(-diff)
+                                textos_tornado.append(f"{diff:.1f}%")
+                                colores_tornado.append('#09274e') # Azul (Dominancia Izquierda)
+                            else:
+                                valores_tornado.append(0)
+                                textos_tornado.append("0%")
+                                colores_tornado.append('#64748b')
+                
+                    df_tor = pd.DataFrame({
+                        'Prueba': tests_nombres,
+                        'Asimetria': valores_tornado,
+                        'Texto': textos_tornado,
+                        'Color': colores_tornado
+                    })
+                    
+                    # Invertimos el DataFrame para que el gráfico pinte el primer test arriba de todo
+                    df_tor = df_tor.iloc[::-1]
+                
+                    fig_tor = go.Figure()
+                    fig_tor.add_trace(go.Bar(
+                        y=df_tor['Prueba'],
+                        x=df_tor['Asimetria'],
+                        orientation='h',
+                        marker_color=df_tor['Color'],
+                        text=df_tor['Texto'],
+                        textposition='outside',
+                        cliponaxis=False
+                    ))
+                
+                    # Ajustamos dinámicamente el eje X para que siempre quepa el texto
+                    max_x = max(abs(df_tor['Asimetria']).max() + 8, 20)
+                
+                    fig_tor.update_layout(
+                        title="Radiografía de Asimetrías Clínicas",
+                        xaxis=dict(
+                            title="<-- Dominancia IZQ (Azul)  |  Dominancia DER (Verde) -->", 
+                            range=[-max_x, max_x],
+                            zeroline=True, zerolinewidth=3, zerolinecolor='black',
+                            showgrid=False
+                        ),
+                        yaxis=dict(title=""),
+                        height=400,
+                        margin=dict(l=10, r=10, t=40, b=10),
+                        showlegend=False,
+                        plot_bgcolor="rgba(0,0,0,0)"
+                    )
+                    
+                    # Líneas de umbral de riesgo lesional (10% precaución, 15% riesgo)
+                    fig_tor.add_vline(x=10, line_width=1.5, line_dash="dash", line_color="#dc2626", opacity=0.5)
+                    fig_tor.add_vline(x=-10, line_width=1.5, line_dash="dash", line_color="#dc2626", opacity=0.5)
+                    fig_tor.add_vline(x=15, line_width=2, line_dash="solid", line_color="#dc2626", opacity=0.7)
+                    fig_tor.add_vline(x=-15, line_width=2, line_dash="solid", line_color="#dc2626", opacity=0.7)
+                
+                    st.plotly_chart(fig_tor, use_container_width=True)
+                    # ==========================================
+                    
                     st.markdown("---")
                     st.markdown("#### 🎯 Evolución y Pautas Clínicas")
                     
