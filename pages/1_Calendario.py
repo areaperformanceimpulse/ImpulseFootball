@@ -43,7 +43,7 @@ with tab_nueva:
             
         with c2:
             # Al estar fuera de un form, esto recargará la página al cambiar y actualizará los jugadores abajo
-            programa_sel = st.selectbox("Programa de Entrenamiento:", options=["Academy", "Elite", "Promise"])
+            programa_sel = st.selectbox("Programa de Entrenamiento:", options=["Academy", "Elite", "Promise", "OffSeason"])
             entrenador_sel = st.selectbox("Entrenador Responsable:", options=lista_entrenadores)
             
             # Filtro dinámico inmediato
@@ -160,7 +160,7 @@ with tab_historial:
                     e_hora = st.time_input("Hora de Inicio:", value=hora_val)
                     e_entrenador = st.selectbox("Entrenador:", options=lista_entrenadores, index=lista_entrenadores.index(sesion_actual.get('entrenador')) if sesion_actual.get('entrenador') in lista_entrenadores else 0)
                 with ec3:
-                    e_prog = st.selectbox("Programa:", options=["Academy", "Elite", "Promise"], index=["Academy", "Elite", "Promise"].index(sesion_actual.get('programa')) if sesion_actual.get('programa') in ["Academy", "Elite", "Promise"] else 0)
+                    e_prog = st.selectbox("Programa:", options=["Academy", "Elite", "Promise", "OffSeason"], index=["Academy", "Elite", "Promise", "OffSeason"].index(sesion_actual.get('programa')) if sesion_actual.get('programa') in ["Academy", "Elite", "Promise", "OffSeason"] else 0)
                 
                 e_comentarios = st.text_area("Foco de la Sesión:", value=sesion_actual.get('comentarios', ''))
                 
