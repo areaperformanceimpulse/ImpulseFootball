@@ -695,14 +695,23 @@ with tab_nuevo:
                             except Exception as e_row:
                                 errores.append(f"Fila {idx+2} ({nombre_excel}): Error de formato - {e_row}")
                                 
+                        # --- SUSTITUYE ESTA PARTE FINAL ---
                         cargar_datos_sistema(force_refresh=True)
+                        
                         if registros_exitosos > 0:
                             st.success(f"¡Se han importado {registros_exitosos} valoraciones correctamente!")
+                        
                         if errores:
-                            st.error("Se encontraron errores:")
-                            for err in errores: st.write(f"- {err}")
-                        if registros_exitosos > 0:
+                            st.error("⚠️ Se encontraron errores en algunas filas y NO se han guardado:")
+                            for err in errores: 
+                                st.write(f"- {err}")
+                            st.info("💡 Por favor, corrige estos errores en tu Excel y vuelve a subir solo las filas que han fallado.")
+                        else:
+                            # Solo recargamos automáticamente si TODO ha ido perfecto
+                            import time
+                            time.sleep(2)
                             st.rerun()
+                        # -----------------------------------
                 except Exception as e:
                     st.error(f"Error general al procesar el Excel: {e}")
 
