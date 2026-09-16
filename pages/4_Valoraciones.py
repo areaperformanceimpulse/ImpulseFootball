@@ -783,7 +783,10 @@ with tab_reg:
                     with ce2: 
                         les_idx = 0 if val_actual.get('lesion') == "No" else 1
                         e_lesion = st.radio("¿Lesión activa?", ["No", "Sí"], index=les_idx, horizontal=True)
-                    with ce3: e_peso = st.number_input("Peso (kg):", min_value=30.0, value=float(val_actual.get('peso_corporal', 70.0)))
+                    with ce3: 
+                        peso_bd = float(val_actual.get('peso_corporal', 70.0))
+                        peso_seguro = peso_bd if peso_bd >= 30.0 else 70.0
+                        e_peso = st.number_input("Peso (kg):", min_value=30.0, value=peso_seguro)
 
                     st.markdown("**🤸 1. Protocolo FMS**")
                     cf_e1, cf_e2, cf_e3, cf_e4, cf_e5, cf_e6 = st.columns(6)
