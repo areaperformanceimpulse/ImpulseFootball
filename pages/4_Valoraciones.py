@@ -762,18 +762,63 @@ with tab_nuevo:
                     st.write("**Vista previa de los primeros registros leídos:**")
                     st.dataframe(df_import.head(3))
                     
+                    
+                    st.markdown("---")
+                    # Nuevo checkbox para auto-crear
+                    auto_crear = st.checkbox("🤖 Crear automáticamente a los deportistas que no existan (se asignarán a 'OffSeason' con datos biológicos estándar).")
+                    
                     if st.button("🚀 Subir e Importar Datos", type="primary", use_container_width=True):
                         registros_exitosos = 0
                         errores = []
                         
                         for idx, row in df_import.iterrows():
                             nombre_excel = str(row.get(MAPEO["nombre"], "")).strip()
+                            # Buscamos al jugador en la caché actual
                             jugador_db = next((j for j in jugadores if j['nombre'].strip().lower() == nombre_excel.lower()), None)
                             
+                            # ==========================================
+                            # LÓGICA DE AUTO-CREACIÓN
+                            # ==========================================
                             if not jugador_db:
-                                errores.append(f"Fila {idx+2}: No se encontró al jugador '{nombre_excel}'.")
-                                continue
-                                
+                                if auto_crear:
+                                    try:
+                                        # Calculamos la temporada a la que pertenece el test para registrarlo ahí
+                                        fecha_obj = pd.to_datetime(row.get(MAPEO["fecha"])).date()
+                                        temp_calc = obtener_temporada(fecha_obj)
+                                        
+                                        nuevo_jugador = {
+                                            "nombre": nombre_excel,
+                                            "altura": 170.0,
+                                            "pierna_dominante": "Derecha",
+                                            "brazo_dominante": "Derecho",
+                                            "programa": "OffSeason",
+                                            "categoria_edad": "Sénior",
+                                            "historial_temporadas": {
+                                                temp_calc: {
+                                                    "programa": "OffSeason",
+                                                    "club": "Histórico Excel",
+                                                    "categoria_club": "N/D",
+                                                    "categoria_edad": "Sénior"
+                                                }
+                                            }
+                                        }
+                                        # Insertamos en Supabase y recuperamos el ID generado
+                                        res = supabase.table("jugadores").insert(nuevo_jugador).execute()
+                                        
+                                        if res.data:
+                                            jugador_db = res.data[0]
+                                            # Lo añadimos a la lista local para que si sale en la siguiente fila del Excel, ya lo detecte
+                                            jugadores.append(jugador_db) 
+                                        else:
+                                            errores.append(f"Fila {idx+2}: Falló la auto-creación del jugador '{nombre_excel}'.")
+                                            continue
+                                    except Exception as e_creacion:
+                                        errores.append(f"Fila {idx+2}: Error al crear jugador '{nombre_excel}': {e_creacion}")
+                                        continue
+                                else:
+                                    errores.append(f"Fila {idx+2}: No se encontró al jugador '{nombre_excel}' (y la auto-creación está desactivada).")
+                                    continue
+                            # ==========================================
                             try:
                                 fecha_obj = pd.to_datetime(row.get(MAPEO["fecha"])).date()
                                 temp_calc = obtener_temporada(fecha_obj)
