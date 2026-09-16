@@ -5,6 +5,7 @@ from datetime import date
 import pandas as pd
 import plotly.express as px
 import numpy as np
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Valoraciones - ImpulseFootball", page_icon="📊", layout="wide")
 aplicar_estilos_base()
@@ -573,6 +574,23 @@ with tab_informes:
                     with col_rad2:
                         st.markdown("*Diagnóstico y Recomendaciones Automáticas*")
                         generar_recomendaciones_automaticas(v_data)
+                    st.markdown("---")
+                    
+                    # Contenedor que ocultaremos al imprimir
+                    st.markdown('<div class="ocultar-en-impresion">', unsafe_allow_html=True)
+                    
+                    if st.button("🖨️ Exportar Informe Completo (PDF)", type="primary", use_container_width=True):
+                        # Este bloque HTML inyecta un script que le dice a la ventana principal del navegador que abra el diálogo de imprimir/guardar como PDF
+                        components.html(
+                            """
+                            <script>
+                                window.parent.print();
+                            </script>
+                            """,
+                            height=0, width=0
+                        )
+                        
+                    st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
 # PESTAÑA 2: AÑADIR NUEVA VALORACIÓN (MANUAL O EXCEL)
