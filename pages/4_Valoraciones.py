@@ -157,7 +157,7 @@ with tab_informes:
                     def generar_recomendaciones_automaticas(v_data):
                         alertas = []
                         peso = v_data.get('peso_corporal', 70) if v_data.get('peso_corporal', 70) > 0 else 70
-                        isq_d, isq_i = v_data.get('iso_flex_rodilla_der', 0), v.get('iso_flex_rodilla_izq', 0)
+                        isq_d, isq_i = v_data.get('iso_flex_rodilla_der', 0), v_data.get('iso_flex_rodilla_izq', 0)
                         
                         if (isq_d / peso) < 3.5 or (isq_i / peso) < 3.5:
                             min_isq = round(min(isq_d / peso, isq_i / peso), 2)
