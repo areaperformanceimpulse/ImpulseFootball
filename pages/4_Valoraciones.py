@@ -434,142 +434,280 @@ with tab_informes:
                         generar_recomendaciones_automaticas(v_data)
 
 # ==========================================
-# PESTAÑA 2: AÑADIR NUEVA VALORACIÓN
+# PESTAÑA 2: AÑADIR NUEVA VALORACIÓN (MANUAL O EXCEL)
 # ==========================================
 with tab_nuevo:
     if not jugadores:
         st.warning("Primero debes registrar deportistas en la sección de Jugadores.")
     else:
-        with st.form("form_nueva_val_detallada"):
-            
-            st.markdown("#### ⚙️ Datos Generales")
-            # SE HAN ELIMINADO LOS CAMPOS TEMPORADA Y NUMERO VALORACION
-            cg1, cg2, cg3, cg4 = st.columns(4)
-            with cg1: jugador_sel = st.selectbox("Deportista:", options=list(mapa_jugadores.keys()), format_func=lambda x: mapa_jugadores[x])
-            with cg2: fecha_test = st.date_input("Fecha:", value=date.today())
-            with cg3: lesion = st.radio("¿Lesión activa?", options=["No", "Sí"], horizontal=True, index=0)
-            with cg4: peso = st.number_input("Peso (kg):", min_value=30.0, value=70.0, step=0.5)
-            
-            st.markdown("---")
-            
-            st.markdown("#### 🤸 1. Protocolo FMS (0 a 3)")
-            cf1, cf2, cf3, cf4, cf5 = st.columns(5)
-            with cf1: fms_sentadilla = st.number_input("Sentadilla", 0, 3, 3)
-            with cf2: fms_obstaculo_d = st.number_input("Obstáculo Der.", 0, 3, 3)
-            with cf3: fms_obstaculo_i = st.number_input("Obstáculo Izq.", 0, 3, 3)
-            with cf4: fms_zancada_d = st.number_input("Zancada Der.", 0, 3, 3)
-            with cf5: fms_zancada_i = st.number_input("Zancada Izq.", 0, 3, 3)
-            
-            cf6, cf7, cf8, cf9, cf10, cf11 = st.columns(6)
-            with cf6: fms_hombro_d = st.number_input("Hombro Der.", 0, 3, 3)
-            with cf7: fms_hombro_i = st.number_input("Hombro Izq.", 0, 3, 3)
-            with cf8: fms_pierna_d = st.number_input("P. Recta Der.", 0, 3, 3)
-            with cf9: fms_pierna_i = st.number_input("P. Recta Izq.", 0, 3, 3)
-            with cf10: fms_tronco = st.number_input("Est. Tronco", 0, 3, 3)
-            with cf11: fms_rotatoria = st.number_input("Est. Rotatoria", 0, 3, 3)
-
-            st.markdown("---")
-            
-            st.markdown("#### 🦘 2. Test de Salto (cm)")
-            cs1, cs2, cs3, cs4, cs5 = st.columns(5)
-            with cs1: cmj_bi = st.number_input("CMJ Bilateral", min_value=0.0, value=0.0, step=0.5)
-            with cs2: cmj_ud = st.number_input("CMJ Uni. Der.", min_value=0.0, value=0.0, step=0.5)
-            with cs3: cmj_ui = st.number_input("CMJ Uni. Izq.", min_value=0.0, value=0.0, step=0.5)
-            with cs4: sh_d = st.number_input("Horiz. Der.", min_value=0.0, value=0.0, step=1.0)
-            with cs5: sh_i = st.number_input("Horiz. Izq.", min_value=0.0, value=0.0, step=1.0)
-
-            st.markdown("---")
-            
-            st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica (N)")
-            ci1, ci2, ci3, ci4 = st.columns(4)
-            with ci1:
-                st.markdown("**Extensión (Cuád)**")
-                c_ed, c_ei = st.columns(2)
-                with c_ed: iso_ext_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="ext_d")
-                with c_ei: iso_ext_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="ext_i")
-            with ci2:
-                st.markdown("**Flexión (Isq)**")
-                c_fd, c_fi = st.columns(2)
-                with c_fd: iso_flx_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="flx_d")
-                with c_fi: iso_flx_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="flx_i")
-            with ci3:
-                st.markdown("**Aducción**")
-                c_ad, c_ai = st.columns(2)
-                with c_ad: iso_add_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="add_d")
-                with c_ai: iso_add_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="add_i")
-            with ci4:
-                st.markdown("**Abducción**")
-                c_abd, c_abi = st.columns(2)
-                with c_abd: iso_abd_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="abd_d")
-                with c_abi: iso_abd_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="abd_i")
-
-            st.markdown("---")
-            
-            st.markdown("#### 🏋️‍♂️ 4. Perfil Carga-Velocidad y 1RM")
-            st.markdown("**Sentadilla**")
-            c_sq = st.columns(10)
-            p_sq, v_sq = [], []
-            for s in range(5):
-                with c_sq[s*2]: p_sq.append(st.number_input(f"S{s+1}(kg)", min_value=0.0, step=2.5, key=f"sq_p_{s}"))
-                with c_sq[s*2+1]: v_sq.append(st.number_input(f"S{s+1}(m/s)", min_value=0.0, step=0.01, key=f"sq_v_{s}"))
+        modo_ingreso = st.radio("Método de registro:", ["📝 Formulario Manual", "📁 Importar desde Excel"], horizontal=True)
+        
+        # ---------------------------------------------------------
+        # OPCIÓN A: FORMULARIO MANUAL
+        # ---------------------------------------------------------
+        if modo_ingreso == "📝 Formulario Manual":
+            with st.form("form_nueva_val_detallada"):
                 
-            st.markdown("**Peso Muerto**")
-            c_pm = st.columns(10)
-            p_pm, v_pm = [], []
-            for s in range(5):
-                with c_pm[s*2]: p_pm.append(st.number_input(f"S{s+1}(kg)", min_value=0.0, step=2.5, key=f"pm_p_{s}"))
-                with c_pm[s*2+1]: v_pm.append(st.number_input(f"S{s+1}(m/s)", min_value=0.0, step=0.01, key=f"pm_v_{s}"))
+                st.markdown("#### ⚙️ Datos Generales")
+                cg1, cg2, cg3, cg4 = st.columns(4)
+                with cg1: jugador_sel = st.selectbox("Deportista:", options=list(mapa_jugadores.keys()), format_func=lambda x: mapa_jugadores[x])
+                with cg2: fecha_test = st.date_input("Fecha:", value=date.today())
+                with cg3: lesion = st.radio("¿Lesión activa?", options=["No", "Sí"], horizontal=True, index=0)
+                with cg4: peso = st.number_input("Peso (kg):", min_value=30.0, value=70.0, step=0.5)
+                
+                st.markdown("---")
+                
+                st.markdown("#### 🤸 1. Protocolo FMS (0 a 3)")
+                cf1, cf2, cf3, cf4, cf5 = st.columns(5)
+                with cf1: fms_sentadilla = st.number_input("Sentadilla (FMS 2)", 0, 3, 3)
+                with cf2: fms_obstaculo_d = st.number_input("Obstáculo Der. (FMS 4)", 0, 3, 3)
+                with cf3: fms_obstaculo_i = st.number_input("Obstáculo Izq. (FMS 4)", 0, 3, 3)
+                with cf4: fms_zancada_d = st.number_input("Zancada Der. (FMS 5)", 0, 3, 3)
+                with cf5: fms_zancada_i = st.number_input("Zancada Izq. (FMS 5)", 0, 3, 3)
+                
+                cf6, cf7, cf8, cf9, cf10, cf11 = st.columns(6)
+                with cf6: fms_hombro_d = st.number_input("Hombro Der. (FMS 1)", 0, 3, 3)
+                with cf7: fms_hombro_i = st.number_input("Hombro Izq. (FMS 1)", 0, 3, 3)
+                with cf8: fms_pierna_d = st.number_input("P. Recta Der. (FMS 3)", 0, 3, 3)
+                with cf9: fms_pierna_i = st.number_input("P. Recta Izq. (FMS 3)", 0, 3, 3)
+                with cf10: fms_tronco = st.number_input("Est. Tronco (FMS 6)", 0, 3, 3)
+                with cf11: fms_rotatoria = st.number_input("Est. Rotatoria (FMS 7)", 0, 3, 3)
+    
+                st.markdown("---")
+                
+                st.markdown("#### 🦘 2. Test de Salto (cm)")
+                cs1, cs2, cs3, cs4, cs5 = st.columns(5)
+                with cs1: cmj_bi = st.number_input("CMJ Bilateral", min_value=0.0, value=0.0, step=0.5)
+                with cs2: cmj_ud = st.number_input("CMJ Uni. Der.", min_value=0.0, value=0.0, step=0.5)
+                with cs3: cmj_ui = st.number_input("CMJ Uni. Izq.", min_value=0.0, value=0.0, step=0.5)
+                with cs4: sh_d = st.number_input("Horiz. Der.", min_value=0.0, value=0.0, step=1.0)
+                with cs5: sh_i = st.number_input("Horiz. Izq.", min_value=0.0, value=0.0, step=1.0)
+    
+                st.markdown("---")
+                
+                st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica (N)")
+                ci1, ci2, ci3, ci4 = st.columns(4)
+                with ci1:
+                    st.markdown("**Extensión (Cuád)**")
+                    c_ed, c_ei = st.columns(2)
+                    with c_ed: iso_ext_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="ext_d")
+                    with c_ei: iso_ext_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="ext_i")
+                with ci2:
+                    st.markdown("**Flexión (Isq)**")
+                    c_fd, c_fi = st.columns(2)
+                    with c_fd: iso_flx_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="flx_d")
+                    with c_fi: iso_flx_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="flx_i")
+                with ci3:
+                    st.markdown("**Aducción**")
+                    c_ad, c_ai = st.columns(2)
+                    with c_ad: iso_add_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="add_d")
+                    with c_ai: iso_add_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="add_i")
+                with ci4:
+                    st.markdown("**Abducción**")
+                    c_abd, c_abi = st.columns(2)
+                    with c_abd: iso_abd_d = st.number_input("Der", min_value=0.0, value=0.0, step=1.0, key="abd_d")
+                    with c_abi: iso_abd_i = st.number_input("Izq", min_value=0.0, value=0.0, step=1.0, key="abd_i")
+    
+                st.markdown("---")
+                
+                st.markdown("#### 🏋️‍♂️ 4. Perfil Carga-Velocidad y 1RM")
+                st.markdown("**Sentadilla**")
+                c_sq = st.columns(10)
+                p_sq, v_sq = [], []
+                for s in range(5):
+                    with c_sq[s*2]: p_sq.append(st.number_input(f"S{s+1}(kg)", min_value=0.0, step=2.5, key=f"sq_p_{s}"))
+                    with c_sq[s*2+1]: v_sq.append(st.number_input(f"S{s+1}(m/s)", min_value=0.0, step=0.01, key=f"sq_v_{s}"))
+                    
+                st.markdown("**Peso Muerto**")
+                c_pm = st.columns(10)
+                p_pm, v_pm = [], []
+                for s in range(5):
+                    with c_pm[s*2]: p_pm.append(st.number_input(f"S{s+1}(kg)", min_value=0.0, step=2.5, key=f"pm_p_{s}"))
+                    with c_pm[s*2+1]: v_pm.append(st.number_input(f"S{s+1}(m/s)", min_value=0.0, step=0.01, key=f"pm_v_{s}"))
+    
+                def calcular_rm_final(pesos, vels):
+                    validas = [(pesos[i], vels[i]) for i in range(5) if vels[i] > 0 and pesos[i] > 0]
+                    if validas:
+                        p_max, v_max = max(validas, key=lambda x: x[0])
+                        return round(p_max / v_max, 1)
+                    return round(max(pesos), 1) if max(pesos) > 0 else 0.0
+    
+                rm_sq = calcular_rm_final(p_sq, v_sq)
+                rm_pm = calcular_rm_final(p_pm, v_pm)
+    
+                st.markdown("---")
+                comentarios = st.text_input("Observaciones Generales de la Valoración:")
+                
+                if st.form_submit_button("💾 Guardar Valoración Completa", use_container_width=True):
+                    try:
+                        temp_calculada = obtener_temporada(fecha_test)
+                        num_val_calculado = calcular_num_valoracion(jugador_sel, temp_calculada, valoraciones)
+    
+                        nuevo_test = {
+                            "jugador_id": jugador_sel, 
+                            "fecha": str(fecha_test), 
+                            "temporada": temp_calculada,
+                            "numero_valoracion": num_val_calculado,
+                            "lesion": lesion, "peso_corporal": float(peso),
+                            "fms_sentadilla": fms_sentadilla, "fms_paso_obstaculo_der": fms_obstaculo_d, "fms_paso_obstaculo_izq": fms_obstaculo_i,
+                            "fms_zancada_der": fms_zancada_d, "fms_zancada_izq": fms_zancada_i, "fms_mov_hombro_der": fms_hombro_d, "fms_mov_hombro_izq": fms_hombro_i,
+                            "fms_elevacion_pierna_der": fms_pierna_d, "fms_elevacion_pierna_izq": fms_pierna_i, "fms_estabilidad_tronco": fms_tronco, "fms_estabilidad_rotatoria": fms_rotatoria,
+                            "cmj_bilateral": cmj_bi, "cmj_uni_der": cmj_ud, "cmj_uni_izq": cmj_ui, "salto_horiz_der": sh_d, "salto_horiz_izq": sh_i,
+                            "iso_ext_rodilla_der": iso_ext_d, "iso_ext_rodilla_izq": iso_ext_i, "iso_flex_rodilla_der": iso_flx_d, "iso_flex_rodilla_izq": iso_flx_i,
+                            "iso_add_cadera_der": iso_add_d, "iso_add_cadera_izq": iso_add_i, "iso_abd_cadera_der": iso_abd_d, "iso_abd_cadera_izq": iso_abd_i,
+                            "rm_sentadilla": float(rm_sq), "rm_peso_muerto": float(rm_pm),
+                            "perfil_sentadilla": {"kg": p_sq, "vel": v_sq},
+                            "perfil_peso_muerto": {"kg": p_pm, "vel": v_pm},
+                            "comentarios": comentarios
+                        }
+                        supabase.table("valoraciones_condicionales").insert(nuevo_test).execute()
+                        cargar_datos_sistema(force_refresh=True)
+                        st.success(f"¡Valoración #{num_val_calculado} (Temporada {temp_calculada}) guardada correctamente!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error al guardar: {e}")
 
-            def calcular_rm_final(pesos, vels):
-                validas = [(pesos[i], vels[i]) for i in range(5) if vels[i] > 0 and pesos[i] > 0]
-                if validas:
-                    p_max, v_max = max(validas, key=lambda x: x[0])
-                    return round(p_max / v_max, 1)
-                return round(max(pesos), 1) if max(pesos) > 0 else 0.0
-
-            rm_sq = calcular_rm_final(p_sq, v_sq)
-            rm_pm = calcular_rm_final(p_pm, v_pm)
-
-            st.markdown("---")
-            comentarios = st.text_input("Observaciones Generales de la Valoración:")
+        # ---------------------------------------------------------
+        # OPCIÓN B: IMPORTACIÓN DESDE EXCEL
+        # ---------------------------------------------------------
+        else:
+            st.markdown("#### 📁 Importación Masiva (Excel)")
+            st.info("💡 Asegúrate de que los nombres de los deportistas en el Excel coinciden exactamente con los registrados en la plataforma. Las temporadas y números de valoración se calcularán solos.")
             
-            if st.form_submit_button("💾 Guardar Valoración Completa", use_container_width=True):
-                try:
-                    # =========================================================
-                    # CÁLCULOS AUTOMÁTICOS ANTES DE GUARDAR
-                    # =========================================================
-                    temp_calculada = obtener_temporada(fecha_test)
-                    num_val_calculado = calcular_num_valoracion(jugador_sel, temp_calculada, valoraciones)
+            # --- ⚠️ MODIFICA ESTO SI LAS COLUMNAS DE TU EXCEL TIENEN OTRO NOMBRE ---
+            MAPEO = {
+                "nombre": "Nombre",             # Nombre de la columna en tu Excel que tiene el nombre del jugador
+                "fecha": "Fecha",               # Formato de fecha válido
+                "peso": "Peso",                 # Peso corporal
+                "lesion": "Lesion",             # "Sí" o "No"
+                # FMS (Ajustado a tus indicaciones)
+                "fms1_d": "FMS 1 Hombro Der",
+                "fms1_i": "FMS 1 Hombro Izq",
+                "fms2": "FMS 2 Sentadilla",
+                "fms3_d": "FMS 3 Pierna Der",
+                "fms3_i": "FMS 3 Pierna Izq",
+                "fms4_d": "FMS 4 Obstaculo Der",
+                "fms4_i": "FMS 4 Obstaculo Izq",
+                "fms5_d": "FMS 5 Zancada Der",
+                "fms5_i": "FMS 5 Zancada Izq",
+                "fms6": "FMS 6 Tronco",
+                "fms7": "FMS 7 Rotatoria",
+                # Salto
+                "cmj_bi": "CMJ Bilateral",
+                "cmj_ud": "CMJ Uni Der",
+                "cmj_ui": "CMJ Uni Izq",
+                "sh_d": "Salto Horiz Der",
+                "sh_i": "Salto Horiz Izq",
+                # Isometria
+                "iso_ext_d": "Iso Ext Cuad Der",
+                "iso_ext_i": "Iso Ext Cuad Izq",
+                "iso_flx_d": "Iso Flex Isq Der",
+                "iso_flx_i": "Iso Flex Isq Izq",
+                "iso_add_d": "Iso Add Cadera Der",
+                "iso_add_i": "Iso Add Cadera Izq",
+                "iso_abd_d": "Iso Abd Cadera Der",
+                "iso_abd_i": "Iso Abd Cadera Izq",
+                # RM 
+                "rm_sq": "1RM Sentadilla",
+                "rm_pm": "1RM Peso Muerto"
+            }
 
-                    nuevo_test = {
-                        "jugador_id": jugador_sel, 
-                        "fecha": str(fecha_test), 
-                        "temporada": temp_calculada,             # Automático
-                        "numero_valoracion": num_val_calculado,  # Automático
-                        "lesion": lesion, "peso_corporal": float(peso),
-                        "fms_sentadilla": fms_sentadilla,
-                        "fms_paso_obstaculo_der": fms_obstaculo_d, "fms_paso_obstaculo_izq": fms_obstaculo_i,
-                        "fms_zancada_der": fms_zancada_d, "fms_zancada_izq": fms_zancada_i,
-                        "fms_mov_hombro_der": fms_hombro_d, "fms_mov_hombro_izq": fms_hombro_i,
-                        "fms_elevacion_pierna_der": fms_pierna_d, "fms_elevacion_pierna_izq": fms_pierna_i,
-                        "fms_estabilidad_tronco": fms_tronco, "fms_estabilidad_rotatoria": fms_rotatoria,
-                        "cmj_bilateral": cmj_bi, "cmj_uni_der": cmj_ud, "cmj_uni_izq": cmj_ui,
-                        "salto_horiz_der": sh_d, "salto_horiz_izq": sh_i,
-                        "iso_ext_rodilla_der": iso_ext_d, "iso_ext_rodilla_izq": iso_ext_i,
-                        "iso_flex_rodilla_der": iso_flx_d, "iso_flex_rodilla_izq": iso_flx_i,
-                        "iso_add_cadera_der": iso_add_d, "iso_add_cadera_izq": iso_add_i,
-                        "iso_abd_cadera_der": iso_abd_d, "iso_abd_cadera_izq": iso_abd_i,
-                        "rm_sentadilla": float(rm_sq), "rm_peso_muerto": float(rm_pm),
-                        "perfil_sentadilla": {"kg": p_sq, "vel": v_sq},
-                        "perfil_peso_muerto": {"kg": p_pm, "vel": v_pm},
-                        "comentarios": comentarios
-                    }
-                    supabase.table("valoraciones_condicionales").insert(nuevo_test).execute()
-                    cargar_datos_sistema(force_refresh=True)
-                    st.success(f"¡Valoración #{num_val_calculado} (Temporada {temp_calculada}) guardada correctamente!")
-                    st.rerun()
+            archivo = st.file_uploader("Sube tu plantilla Excel (.xlsx)", type=["xlsx", "xls"])
+            
+            if archivo:
+                try:
+                    df_import = pd.read_excel(archivo)
+                    st.write("**Vista previa de los primeros registros leídos:**")
+                    st.dataframe(df_import.head(3))
+                    
+                    if st.button("🚀 Subir e Importar Datos", type="primary", use_container_width=True):
+                        registros_exitosos = 0
+                        errores = []
+                        
+                        # Bucle por cada fila del Excel
+                        for idx, row in df_import.iterrows():
+                            nombre_excel = str(row.get(MAPEO["nombre"], "")).strip()
+                            
+                            # Buscar jugador en la BBDD (insensible a mayúsculas)
+                            jugador_db = next((j for j in jugadores if j['nombre'].lower() == nombre_excel.lower()), None)
+                            
+                            if not jugador_db:
+                                errores.append(f"Fila {idx+2}: No se encontró al jugador '{nombre_excel}'.")
+                                continue
+                                
+                            try:
+                                fecha_obj = pd.to_datetime(row.get(MAPEO["fecha"])).date()
+                                temp_calc = obtener_temporada(fecha_obj)
+                                num_val_calc = calcular_num_valoracion(jugador_db['id'], temp_calc, valoraciones)
+                                
+                                # Si un dato numérico viene vacío en excel (NaN), lo pasamos a 0.0
+                                def s(val):
+                                    return 0.0 if pd.isna(val) else float(val)
+
+                                nuevo_test = {
+                                    "jugador_id": jugador_db['id'], 
+                                    "fecha": str(fecha_obj), 
+                                    "temporada": temp_calc,
+                                    "numero_valoracion": num_val_calc,
+                                    "lesion": "Sí" if str(row.get(MAPEO["lesion"], "")).lower().strip() in ["sí", "si", "yes"] else "No",
+                                    "peso_corporal": s(row.get(MAPEO["peso"])),
+                                    # FMS
+                                    "fms_mov_hombro_der": int(s(row.get(MAPEO["fms1_d"]))),
+                                    "fms_mov_hombro_izq": int(s(row.get(MAPEO["fms1_i"]))),
+                                    "fms_sentadilla": int(s(row.get(MAPEO["fms2"]))),
+                                    "fms_elevacion_pierna_der": int(s(row.get(MAPEO["fms3_d"]))),
+                                    "fms_elevacion_pierna_izq": int(s(row.get(MAPEO["fms3_i"]))),
+                                    "fms_paso_obstaculo_der": int(s(row.get(MAPEO["fms4_d"]))),
+                                    "fms_paso_obstaculo_izq": int(s(row.get(MAPEO["fms4_i"]))),
+                                    "fms_zancada_der": int(s(row.get(MAPEO["fms5_d"]))),
+                                    "fms_zancada_izq": int(s(row.get(MAPEO["fms5_i"]))),
+                                    "fms_estabilidad_tronco": int(s(row.get(MAPEO["fms6"]))),
+                                    "fms_estabilidad_rotatoria": int(s(row.get(MAPEO["fms7"]))),
+                                    # Salto
+                                    "cmj_bilateral": s(row.get(MAPEO["cmj_bi"])),
+                                    "cmj_uni_der": s(row.get(MAPEO["cmj_ud"])),
+                                    "cmj_uni_izq": s(row.get(MAPEO["cmj_ui"])),
+                                    "salto_horiz_der": s(row.get(MAPEO["sh_d"])),
+                                    "salto_horiz_izq": s(row.get(MAPEO["sh_i"])),
+                                    # Isometria
+                                    "iso_ext_rodilla_der": s(row.get(MAPEO["iso_ext_d"])),
+                                    "iso_ext_rodilla_izq": s(row.get(MAPEO["iso_ext_i"])),
+                                    "iso_flex_rodilla_der": s(row.get(MAPEO["iso_flx_d"])),
+                                    "iso_flex_rodilla_izq": s(row.get(MAPEO["iso_flx_i"])),
+                                    "iso_add_cadera_der": s(row.get(MAPEO["iso_add_d"])),
+                                    "iso_add_cadera_izq": s(row.get(MAPEO["iso_add_i"])),
+                                    "iso_abd_cadera_der": s(row.get(MAPEO["iso_abd_d"])),
+                                    "iso_abd_cadera_izq": s(row.get(MAPEO["iso_abd_i"])),
+                                    # RM (dejamos los perfiles de kg y m/s vacíos en importación masiva)
+                                    "rm_sentadilla": s(row.get(MAPEO["rm_sq"])),
+                                    "rm_peso_muerto": s(row.get(MAPEO["rm_pm"])),
+                                    "perfil_sentadilla": {"kg": [], "vel": []},
+                                    "perfil_peso_muerto": {"kg": [], "vel": []},
+                                    "comentarios": "Importado desde Excel."
+                                }
+                                
+                                supabase.table("valoraciones_condicionales").insert(nuevo_test).execute()
+                                # Tras guardar uno, debemos simular que hemos cargado para que si el excel tiene 2 registros del mismo jugador, calcule bien el Nº de valoración.
+                                valoraciones.append(nuevo_test)
+                                registros_exitosos += 1
+                                
+                            except Exception as e_row:
+                                errores.append(f"Fila {idx+2} ({nombre_excel}): Error de formato en los datos - {e_row}")
+                                
+                        # Resultados de la importación
+                        cargar_datos_sistema(force_refresh=True)
+                        if registros_exitosos > 0:
+                            st.success(f"¡Se han importado {registros_exitosos} valoraciones correctamente!")
+                        
+                        if errores:
+                            st.error("Se encontraron los siguientes errores y esas filas no se guardaron:")
+                            for err in errores:
+                                st.write(f"- {err}")
+                        
+                        if registros_exitosos > 0:
+                            st.rerun()
                 except Exception as e:
-                    st.error(f"Error al guardar: {e}")
+                    st.error(f"Error general al leer el Excel. Comprueba que el formato es correcto: {e}")
 
 # ==========================================
 # PESTAÑA 3: TABLA DE REGISTROS Y GESTIÓN
