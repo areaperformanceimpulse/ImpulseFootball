@@ -1,5 +1,5 @@
 import streamlit as st
-from database.db_manager import supabase, cargar_datos_sistema
+from database.db_manager import get_supabase_client, cargar_datos_sistema
 from utils.math_helpers import aplicar_estilos_base
 
 st.set_page_config(page_title="Impulse Football", page_icon="⚡", layout="wide")
@@ -8,6 +8,8 @@ aplicar_estilos_base()
 if "autenticado" not in st.session_state: st.session_state.autenticado = False
 if "jugadores" not in st.session_state: st.session_state.jugadores = []
 if "valoraciones" not in st.session_state: st.session_state.valoraciones = []
+
+supabase = get_supabase_client()
 
 if not st.session_state.autenticado:
     st.markdown("<br><br><br>", unsafe_allow_html=True)
