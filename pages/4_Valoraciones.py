@@ -122,31 +122,46 @@ with tab_informes:
                     def generar_grafico_radar(val_inicial, val_actual, peso_corp):
                         peso = peso_corp if peso_corp > 0 else 70.0
                         def calcular_porcentajes_optimos(v):
-                            if not v: return [0, 0, 0, 0, 0]
-                            fms_mov = sum([v.get('fms_mov_hombro_der', 0), v.get('fms_mov_hombro_izq', 0), v.get('fms_elevacion_pierna_der', 0), v.get('fms_elevacion_pierna_izq', 0)])
-                            p_mov = min(100, round((fms_mov / 12.0) * 100))
+                            if not v: return [0, 0, 0, 0, 0, 0]
                             
+                            # 1. Movilidad y Control (FMS Total sobre 33 pts)
+                            fms_total = sum([v.get('fms_sentadilla',0), v.get('fms_paso_obstaculo_der',0), v.get('fms_paso_obstaculo_izq',0),
+                                             v.get('fms_zancada_der',0), v.get('fms_zancada_izq',0), v.get('fms_mov_hombro_der',0),
+                                             v.get('fms_mov_hombro_izq',0), v.get('fms_elevacion_pierna_der',0), v.get('fms_elevacion_pierna_izq',0),
+                                             v.get('fms_estabilidad_tronco',0), v.get('fms_estabilidad_rotatoria',0)])
+                            p_fms = min(100, round((fms_total / 33.0) * 100))
+                            
+                            # 2. Potencia Vertical (CMJ, óptimo 50 cm)
                             cmj = v.get('cmj_bilateral', 0)
                             p_cmj = min(100, round((cmj / 50.0) * 100))
                             
-                            isq_d, isq_i = v.get('iso_flex_rodilla_der', 0), v.get('iso_flex_rodilla_izq', 0)
-                            isq_prom = (isq_d + isq_i) / 2 if (isq_d > 0 or isq_i > 0) else 0
-                            p_isq = min(100, round(((isq_prom / peso) / 4.5) * 100))
-                            
-                            sq_rm = v.get('rm_sentadilla', 0)
-                            p_sq = min(100, round(((sq_rm / peso) / 2.0) * 100))
-                            
+                            # 3. Potencia Horizontal (Salto Horiz, óptimo 240 cm)
                             sh_d, sh_i = v.get('salto_horiz_der', 0), v.get('salto_horiz_izq', 0)
                             sh_prom = (sh_d + sh_i) / 2 if (sh_d > 0 or sh_i > 0) else 0
                             p_sh = min(100, round((sh_prom / 240.0) * 100))
                             
-                            return [p_mov, p_cmj, p_isq, p_sq, p_sh]
+                            # 4. Fuerza Base (Sentadilla 2x Peso corporal)
+                            sq_rm = v.get('rm_sentadilla', 0)
+                            p_sq = min(100, round(((sq_rm / peso) / 2.0) * 100))
+                            
+                            # 5. Prevención Isquiosurales (3.5 N/kg óptimo)
+                            isq_d, isq_i = v.get('iso_flex_rodilla_der', 0), v.get('iso_flex_rodilla_izq', 0)
+                            isq_prom = (isq_d + isq_i) / 2 if (isq_d > 0 or isq_i > 0) else 0
+                            p_isq = min(100, round(((isq_prom / peso) / 3.5) * 100))
+                            
+                            # 6. Prevención Aductores (3.0 N/kg óptimo)
+                            add_d, add_i = v.get('iso_add_cadera_der', 0), v.get('iso_add_cadera_izq', 0)
+                            add_prom = (add_d + add_i) / 2 if (add_d > 0 or add_i > 0) else 0
+                            p_add = min(100, round(((add_prom / peso) / 3.0) * 100))
+                            
+                            return [p_fms, p_cmj, p_sh, p_sq, p_isq, p_add]
                     
-                        categorias = ['Movilidad FMS', 'Salto (CMJ)', 'F. Isquio (N/kg)', 'F. Sentadilla (Rel)', 'Salto Horiz.']
+                        # Lista de 6 elementos para el hexágono
+                        categorias = ['FMS Total', 'CMJ (Vertical)', 'Salto Horiz.', 'F. Sentadilla', 'F. Isquios', 'F. Aductores']
                         df_radar = pd.DataFrame({
                             'Métrica': categorias * 2,
                             'Valor': calcular_porcentajes_optimos(val_inicial) + calcular_porcentajes_optimos(val_actual),
-                            'Test': ['Inicial (Base)'] * 5 + ['Actual'] * 5
+                            'Test': ['Inicial (Base)'] * 6 + ['Actual'] * 6
                         })
                         
                         fig = px.line_polar(df_radar, r='Valor', theta='Métrica', color='Test', line_close=True, color_discrete_map={'Inicial (Base)': '#09274e', 'Actual': '#10833d'})
