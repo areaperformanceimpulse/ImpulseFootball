@@ -9,6 +9,8 @@ import numpy as np
 st.set_page_config(page_title="Valoraciones - ImpulseFootball", page_icon="📊", layout="wide")
 aplicar_estilos_base()
 
+supabase = get_supabase_client()
+
 if not st.session_state.get("autenticado", False):
     st.warning("Sesión caducada.")
     st.stop()
