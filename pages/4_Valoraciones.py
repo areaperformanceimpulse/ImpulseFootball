@@ -17,7 +17,6 @@ cargar_datos_sistema()
 
 st.title("📊 Valoraciones Condicionales (Gimnasio)")
 
-# 1. REORDEN DE PESTAÑAS: Informes ahora es la primera
 tab_informes, tab_nuevo, tab_reg = st.tabs(["📈 Informes de valoraciones", "➕ Añadir Nueva Valoración", "📋 Tabla de registros"])
 
 jugadores = st.session_state.get("jugadores", [])
@@ -25,7 +24,30 @@ valoraciones = st.session_state.get("valoraciones", [])
 mapa_jugadores = {j['id']: j['nombre'] for j in jugadores}
 
 # ==========================================
-# PESTAÑA 1: INFORMES DE VALORACIONES (PÁGINA LIMPIA)
+# FUNCIONES DE AUTOMATIZACIÓN DE TIEMPO
+# ==========================================
+def obtener_temporada(fecha_obj):
+    """Calcula la temporada (ej: '26/27') a partir de una fecha. Inicia el 1 de septiembre."""
+    mes = fecha_obj.month
+    anio = fecha_obj.year
+    if mes >= 9:
+        # Del 1 de septiembre hasta final de año (ej: sep 2026 -> 26/27)
+        return f"{str(anio)[-2:]}/{str(anio + 1)[-2:]}"
+    else:
+        # De enero a agosto (ej: ago 2027 -> 26/27)
+        return f"{str(anio - 1)[-2:]}/{str(anio)[-2:]}"
+
+def calcular_num_valoracion(jugador_id, temporada_str, vals_existentes, id_excluir=None):
+    """Cuenta cuántas valoraciones tiene un jugador en una temporada para asignar el número correlativo."""
+    count = 0
+    for v in vals_existentes:
+        if v.get('jugador_id') == jugador_id and v.get('temporada') == temporada_str:
+            if id_excluir is None or v.get('id') != id_excluir:
+                count += 1
+    return count + 1
+
+# ==========================================
+# PESTAÑA 1: INFORMES DE VALORACIONES
 # ==========================================
 with tab_informes:
     st.markdown("### 📈 Informes de Valoraciones y Perfil Individual")
@@ -33,7 +55,6 @@ with tab_informes:
     if not jugadores or not valoraciones:
         st.info("No hay datos suficientes para mostrar informes.")
     else:
-        # Selectores en la parte superior
         cf1, cf2, cf3 = st.columns(3)
         with cf1: jug_sel_prog = st.selectbox("Deportista:", options=list(mapa_jugadores.keys()), format_func=lambda x: mapa_jugadores[x])
         
@@ -53,16 +74,12 @@ with tab_informes:
             else:
                 dicc_vals = {row['id']: f"{row['numero_valoracion']} ({row['fecha']})" for idx, row in df_temp.iterrows()}
                 
-                # Selector con opción nula por defecto para mantener la página limpia
                 with cf3: 
                     val_sel_id = st.selectbox("Número de Valoración:", options=[None] + list(dicc_vals.keys()), format_func=lambda x: dicc_vals[x] if x else "Seleccione para generar...")
                 
                 if val_sel_id is None:
                     st.info("👆 Selecciona una valoración en el menú superior para desplegar el informe exhaustivo.")
                 else:
-                    # ====================================================
-                    # GENERACIÓN DEL INFORME (Se ejecuta solo si hay selección)
-                    # ====================================================
                     v_data = df_temp[df_temp['id'] == val_sel_id].iloc[0]
                     peso_actual = safe_float(v_data.get('peso_corporal'))
                     if peso_actual == 0: peso_actual = 70.0 
@@ -87,7 +104,6 @@ with tab_informes:
                         </div>
                         """, unsafe_allow_html=True)
 
-                    # Función de asimetría que identifica la pierna débil
                     def badge_asi_detallado(val, der, izq):
                         if val < 10: 
                             return f"🟢 {val}% (Óptimo)"
@@ -102,83 +118,50 @@ with tab_informes:
                     def badge_adab(val): return f"🟢 {val}" if val >= 0.9 else f"🔴 {val} (Déficit)"
                                       
                     def generar_grafico_radar(val_inicial, val_actual, peso_corp):
-                        """
-                        Genera un gráfico de radar normalizado (0-100%) respecto a estándares óptimos en fútbol.
-                        """
                         peso = peso_corp if peso_corp > 0 else 70.0
-                    
                         def calcular_porcentajes_optimos(v):
                             if not v: return [0, 0, 0, 0, 0]
-                            
-                            # 1. Movilidad FMS (Óptimo = 12 pts)
-                            fms_mov = sum([
-                                v.get('fms_mov_hombro_der', 0), v.get('fms_mov_hombro_izq', 0),
-                                v.get('fms_elevacion_pierna_der', 0), v.get('fms_elevacion_pierna_izq', 0)
-                            ])
+                            fms_mov = sum([v.get('fms_mov_hombro_der', 0), v.get('fms_mov_hombro_izq', 0), v.get('fms_elevacion_pierna_der', 0), v.get('fms_elevacion_pierna_izq', 0)])
                             p_mov = min(100, round((fms_mov / 12.0) * 100))
                             
-                            # 2. Salto CMJ Bilateral (Óptimo = 50 cm)
                             cmj = v.get('cmj_bilateral', 0)
                             p_cmj = min(100, round((cmj / 50.0) * 100))
                             
-                            # 3. Fuerza Relativa Isquiosurales (Óptimo = 4.5 N/kg)
-                            isq_d = v.get('iso_flex_rodilla_der', 0)
-                            isq_i = v.get('iso_flex_rodilla_izq', 0)
+                            isq_d, isq_i = v.get('iso_flex_rodilla_der', 0), v.get('iso_flex_rodilla_izq', 0)
                             isq_prom = (isq_d + isq_i) / 2 if (isq_d > 0 or isq_i > 0) else 0
-                            f_rel_isq = isq_prom / peso
-                            p_isq = min(100, round((f_rel_isq / 4.5) * 100))
+                            p_isq = min(100, round(((isq_prom / peso) / 4.5) * 100))
                             
-                            # 4. Fuerza Relativa Sentadilla 1RM (Óptimo = 2.0x peso)
                             sq_rm = v.get('rm_sentadilla', 0)
-                            f_rel_sq = sq_rm / peso
-                            p_sq = min(100, round((f_rel_sq / 2.0) * 100))
+                            p_sq = min(100, round(((sq_rm / peso) / 2.0) * 100))
                             
-                            # 5. Salto Horizontal Promedio (Óptimo = 240 cm)
-                            sh_d = v.get('salto_horiz_der', 0)
-                            sh_i = v.get('salto_horiz_izq', 0)
+                            sh_d, sh_i = v.get('salto_horiz_der', 0), v.get('salto_horiz_izq', 0)
                             sh_prom = (sh_d + sh_i) / 2 if (sh_d > 0 or sh_i > 0) else 0
                             p_sh = min(100, round((sh_prom / 240.0) * 100))
                             
                             return [p_mov, p_cmj, p_isq, p_sq, p_sh]
                     
                         categorias = ['Movilidad FMS', 'Salto (CMJ)', 'F. Isquio (N/kg)', 'F. Sentadilla (Rel)', 'Salto Horiz.']
-                        
                         df_radar = pd.DataFrame({
                             'Métrica': categorias * 2,
                             'Valor': calcular_porcentajes_optimos(val_inicial) + calcular_porcentajes_optimos(val_actual),
                             'Test': ['Inicial (Base)'] * 5 + ['Actual'] * 5
                         })
                         
-                        fig = px.line_polar(
-                            df_radar, 
-                            r='Valor', 
-                            theta='Métrica', 
-                            color='Test', 
-                            line_close=True,
-                            color_discrete_map={'Inicial (Base)': '#09274e', 'Actual': '#10833d'}  # <--- Pégalo aquí dentro
-                        )
+                        fig = px.line_polar(df_radar, r='Valor', theta='Métrica', color='Test', line_close=True, color_discrete_map={'Inicial (Base)': '#09274e', 'Actual': '#10833d'})
                         fig.update_traces(fill='toself', opacity=0.4)
-                        # Al estar normalizado a porcentajes, el rango del gráfico va perfectamente de 0 a 100
-                        fig.update_layout(
-                            polar=dict(radialaxis=dict(visible=True, range=[0, 100])), 
-                            height=350, 
-                            margin=dict(l=20, r=20, t=30, b=20)
-                        )
+                        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), height=350, margin=dict(l=20, r=20, t=30, b=20))
                         return fig
                     
                     def generar_recomendaciones_automaticas(v_data):
                         alertas = []
-                        # CORREGIDO: Usamos v_data en lugar de v
                         peso = v_data.get('peso_corporal', 70) if v_data.get('peso_corporal', 70) > 0 else 70
-                        isq_d = v_data.get('iso_flex_rodilla_der', 0)
-                        isq_i = v_data.get('iso_flex_rodilla_izq', 0)
+                        isq_d, isq_i = v_data.get('iso_flex_rodilla_der', 0), v.get('iso_flex_rodilla_izq', 0)
                         
                         if (isq_d / peso) < 3.5 or (isq_i / peso) < 3.5:
                             min_isq = round(min(isq_d / peso, isq_i / peso), 2)
                             alertas.append(f"⚠️ **Déficit de fuerza en isquiosurales** ({min_isq} N/kg frente al umbral óptimo de 3.5 N/kg). **Pauta:** Priorizar trabajo excéntrico (Nordic Curl) y cadenas posteriores.")
                     
-                        cmj_d = v_data.get('cmj_uni_der', 0)
-                        cmj_i = v_data.get('cmj_uni_izq', 0)
+                        cmj_d, cmj_i = v_data.get('cmj_uni_der', 0), v_data.get('cmj_uni_izq', 0)
                         if cmj_d > 0 and cmj_i > 0:
                             max_cmj = max(cmj_d, cmj_i)
                             min_cmj = min(cmj_d, cmj_i)
@@ -196,11 +179,7 @@ with tab_informes:
                                 
                     st.markdown("---")
                     
-                    # ---------------------------------------------------------
-                    # 1. MOVILIDAD Y ESTABILIDAD
-                    # ---------------------------------------------------------
                     st.markdown("#### 🤸 1. Análisis de Movilidad y Estabilidad")
-                    
                     cm1, cm2, cm3 = st.columns(3)
                     with cm1: tarjeta_kpi("FMS 1: Sentadilla profunda", v_data.get('fms_sentadilla', 0))
                     with cm2: tarjeta_kpi_doble("FMS 2: Paso Obstáculo", v_data.get('fms_paso_obstaculo_der', 0), v_data.get('fms_paso_obstaculo_izq', 0))
@@ -228,12 +207,8 @@ with tab_informes:
                     c_fms2.info(f"**Clúster Control Motor:** {ctrl_total} / 21 pts | {ctrl_badge}\n\n*(Valora la estabilización activa de las articulaciones)*")
 
                     st.markdown("---")
-
-                    # ---------------------------------------------------------
-                    # 2. RENDIMIENTO EN SALTO Y VECTORES
-                    # ---------------------------------------------------------
-                    st.markdown("#### 🦘 2. Rendimiento en Salto y Vectores")
                     
+                    st.markdown("#### 🦘 2. Rendimiento en Salto y Vectores")
                     cs1, cs2, cs3 = st.columns(3)
                     with cs1: tarjeta_kpi("Salto Vertical Bilateral", f"{v_data.get('cmj_bilateral', 0)} cm")
                     with cs2: tarjeta_kpi_doble("Salto Vertical Unilateral", f"{v_data.get('cmj_uni_der', 0)} cm", f"{v_data.get('cmj_uni_izq', 0)} cm")
@@ -246,25 +221,18 @@ with tab_informes:
                     cmj_uni_sum = safe_float(cmj_d) + safe_float(cmj_i)
                     dbl = round(100 * (cmj_bi / cmj_uni_sum) - 100, 1) if cmj_uni_sum > 0 else 0
                     
-                    if dbl < -10:
-                        dbl_txt = f"🟢 {dbl}% (Óptimo - Perfil unilateral de alta eficiencia para fútbol)"
-                    elif dbl < 0:
-                        dbl_txt = f"🟡 {dbl}% (Adecuado - Eficiencia unilateral estándar)"
-                    else:
-                        dbl_txt = f"🔴 {dbl}% (Déficit Unilateral - Riesgo de lentitud en sprints y recortes)"
+                    if dbl < -10: dbl_txt = f"🟢 {dbl}% (Óptimo - Perfil unilateral de alta eficiencia para fútbol)"
+                    elif dbl < 0: dbl_txt = f"🟡 {dbl}% (Adecuado - Eficiencia unilateral estándar)"
+                    else: dbl_txt = f"🔴 {dbl}% (Déficit Unilateral - Riesgo de lentitud en sprints y recortes)"
                     
                     sh_promedio = (safe_float(v_data.get('salto_horiz_der', 0)) + safe_float(v_data.get('salto_horiz_izq', 0))) / 2
                     cmj_uni_promedio = cmj_uni_sum / 2
                     ratio_vectores = round(sh_promedio / cmj_uni_promedio, 2) if cmj_uni_promedio > 0 else 0
                     
-                    if ratio_vectores > 4.5:
-                        perfil_vector = "🏃 Dominancia Horizontal (Perfil Acelerador - 1ºs metros)"
-                    elif ratio_vectores > 0 and ratio_vectores < 3.5:
-                        perfil_vector = "🚀 Dominancia Vertical (Perfil Aéreo y Velocidad Punta)"
-                    elif ratio_vectores >= 3.5 and ratio_vectores <= 4.5:
-                        perfil_vector = "⚖️ Perfil Vectorial Equilibrado"
-                    else:
-                        perfil_vector = "Datos insuficientes"
+                    if ratio_vectores > 4.5: perfil_vector = "🏃 Dominancia Horizontal (Perfil Acelerador - 1ºs metros)"
+                    elif ratio_vectores > 0 and ratio_vectores < 3.5: perfil_vector = "🚀 Dominancia Vertical (Perfil Aéreo y Velocidad Punta)"
+                    elif ratio_vectores >= 3.5 and ratio_vectores <= 4.5: perfil_vector = "⚖️ Perfil Vectorial Equilibrado"
+                    else: perfil_vector = "Datos insuficientes"
                     
                     ca1, ca2, ca3 = st.columns(3)
                     ca1.info(f"**Asimetría Vertical:** {badge_asi_detallado(asi_cmj, cmj_d, cmj_i)}")
@@ -273,11 +241,7 @@ with tab_informes:
 
                     st.markdown("---")
 
-                    # ---------------------------------------------------------
-                    # 3. FUERZA MÁXIMA ISOMÉTRICA Y FUERZA RELATIVA
-                    # ---------------------------------------------------------
                     st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica y Fuerza Relativa")
-                    
                     ci1, ci2, ci3, ci4 = st.columns(4)
                     with ci1: tarjeta_kpi_doble("Extensión (Cuád)", f"{v_data.get('iso_ext_rodilla_der', 0)} N", f"{v_data.get('iso_ext_rodilla_izq', 0)} N")
                     with ci2: tarjeta_kpi_doble("Flexión (Isq)", f"{v_data.get('iso_flex_rodilla_der', 0)} N", f"{v_data.get('iso_flex_rodilla_izq', 0)} N")
@@ -302,7 +266,6 @@ with tab_informes:
                     ratio_adab_d = round(safe_float(add_d) / safe_float(abd_d), 2) if safe_float(abd_d) > 0 else 0
                     ratio_adab_i = round(safe_float(add_i) / safe_float(abd_i), 2) if safe_float(abd_i) > 0 else 0
     
-                    # Fuerzas Relativas (N/kg)
                     f_rel_ext_d = round(safe_float(ext_d) / peso_actual, 2) if peso_actual > 0 else 0
                     f_rel_ext_i = round(safe_float(ext_i) / peso_actual, 2) if peso_actual > 0 else 0
                     f_rel_flx_d = round(safe_float(flx_d) / peso_actual, 2) if peso_actual > 0 else 0
@@ -327,9 +290,6 @@ with tab_informes:
     
                     st.markdown("---")
 
-                    # ---------------------------------------------------------
-                    # 4. FUERZA MÁXIMA Y PERFIL F-V
-                    # ---------------------------------------------------------
                     st.markdown("#### 🏋️‍♂️ 4. Fuerza Máxima, Perfil F-V y DSI")
                     sq_rm = safe_float(v_data.get('rm_sentadilla'))
                     dl_rm = safe_float(v_data.get('rm_peso_muerto'))
@@ -343,14 +303,10 @@ with tab_informes:
                     with crm4: tarjeta_kpi("Fuerza Relativa Peso Muerto", f"{f_rel_dl}x Peso Corporal")
                     
                     dsi_adaptado = round(cmj_bi / f_rel_sq, 1) if f_rel_sq > 0 else 0
-                    if dsi_adaptado > 25:
-                        diag_dsi = "🔴 Déficit de Fuerza (Alto CMJ, base débil. Priorizar Sentadilla pesada)"
-                    elif dsi_adaptado > 0 and dsi_adaptado < 18:
-                        diag_dsi = "🟡 Déficit de Potencia (Fuerte pero lento. Priorizar Pliometría/Balísticos)"
-                    elif dsi_adaptado >= 18 and dsi_adaptado <= 25:
-                        diag_dsi = "🟢 Transferencia Óptima (Equilibrio Fuerza-Potencia)"
-                    else:
-                        diag_dsi = "Datos insuficientes"
+                    if dsi_adaptado > 25: diag_dsi = "🔴 Déficit de Fuerza (Alto CMJ, base débil. Priorizar Sentadilla pesada)"
+                    elif dsi_adaptado > 0 and dsi_adaptado < 18: diag_dsi = "🟡 Déficit de Potencia (Fuerte pero lento. Priorizar Pliometría/Balísticos)"
+                    elif dsi_adaptado >= 18 and dsi_adaptado <= 25: diag_dsi = "🟢 Transferencia Óptima (Equilibrio Fuerza-Potencia)"
+                    else: diag_dsi = "Datos insuficientes"
                         
                     st.info(f"**Índice de Fuerza Dinámica Adaptado (DSI):** {dsi_adaptado}\n\n*Diagnóstico:* {diag_dsi}")
 
@@ -419,21 +375,13 @@ with tab_informes:
                             st.markdown("*Estimación para Ejercicios Accesorios*")
                             df_acc = pd.DataFrame({
                                 "Ejercicio Accesorio": ["Empuje de Cadera", "Peso Muerto Asimétrico", "Sentadilla Búlgara", "Zancada", "PM Rumano Unilateral"],
-                                "Estimación (kg)": [
-                                    round(sq_rm * 1.20, 1), round(dl_rm * 0.70, 1),
-                                    round(sq_rm * 0.50, 1), round(sq_rm * 0.45, 1),
-                                    round(dl_rm * 0.45, 1)
-                                ]
+                                "Estimación (kg)": [round(sq_rm * 1.20, 1), round(dl_rm * 0.70, 1), round(sq_rm * 0.50, 1), round(sq_rm * 0.45, 1), round(dl_rm * 0.45, 1)]
                             })
                             st.dataframe(df_acc, hide_index=True)
 
                     st.markdown("---")
                     
-                    # ---------------------------------------------------------
-                    # 5. ASIMETRÍA DIRECCIONAL GLOBAL
-                    # ---------------------------------------------------------
                     st.markdown("#### 🧭 5. Asimetría Direccional Global (El Eslabón Débil)")
-                    
                     puntos_der, puntos_izq, empates = 0, 0, 0
                     pruebas_uni = [
                         (v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0)),
@@ -469,26 +417,22 @@ with tab_informes:
                     with ce3: tarjeta_kpi("Empates Bilaterales", f"{empates} / 10")
                     
                     st.info(f"**Análisis de Tendencia Direccional:** {dom_txt} | **Eslabón Débil a compensar:** {eslabon_txt}")
-                    # ====================================================
-                    # 6. EVOLUCIÓN HISTÓRICA (RADAR) Y RECOMENDACIONES
-                    # ====================================================
+
                     st.markdown("---")
                     st.markdown("#### 🎯 6. Evolución Geométrica (Radar) y Pautas Clínicas")
                     
                     col_rad1, col_rad2 = st.columns([1, 1])
-                    
                     with col_rad1:
                         st.markdown("*Perfil Físico: Inicial vs Actual*")
-                        # Buscamos la primera valoración cronológica de este jugador en esta temporada como base
                         vals_cronologicas = df_temp.sort_values(by="fecha", ascending=True)
                         val_inicial_obj = vals_cronologicas.iloc[0].to_dict() if not vals_cronologicas.empty else v_data.to_dict()
-                        
                         fig_radar = generar_grafico_radar(val_inicial_obj, v_data.to_dict(), peso_actual)
                         st.plotly_chart(fig_radar, use_container_width=True)
                         
                     with col_rad2:
                         st.markdown("*Diagnóstico y Recomendaciones Automáticas*")
                         generar_recomendaciones_automaticas(v_data)
+
 # ==========================================
 # PESTAÑA 2: AÑADIR NUEVA VALORACIÓN
 # ==========================================
@@ -498,21 +442,16 @@ with tab_nuevo:
     else:
         with st.form("form_nueva_val_detallada"):
             
-            # --- ⚙️ DATOS GENERALES ---
             st.markdown("#### ⚙️ Datos Generales")
-            cg1, cg2, cg3, cg4, cg5, cg6 = st.columns(6)
+            # SE HAN ELIMINADO LOS CAMPOS TEMPORADA Y NUMERO VALORACION
+            cg1, cg2, cg3, cg4 = st.columns(4)
             with cg1: jugador_sel = st.selectbox("Deportista:", options=list(mapa_jugadores.keys()), format_func=lambda x: mapa_jugadores[x])
-            with cg2: 
-                anos = [f"{str(y)[-2:]}/{str(y+1)[-2:]}" for y in range(2024, 2030)]
-                temporada = st.selectbox("Temporada:", options=anos, index=1)
-            with cg3: num_val = st.number_input("Nº Val:", min_value=1, max_value=10, value=1, step=1)
-            with cg4: lesion = st.radio("¿Lesión activa?", options=["No", "Sí"], horizontal=True, index=0)
-            with cg5: fecha_test = st.date_input("Fecha:", value=date.today())
-            with cg6: peso = st.number_input("Peso (kg):", min_value=30.0, value=70.0, step=0.5)
+            with cg2: fecha_test = st.date_input("Fecha:", value=date.today())
+            with cg3: lesion = st.radio("¿Lesión activa?", options=["No", "Sí"], horizontal=True, index=0)
+            with cg4: peso = st.number_input("Peso (kg):", min_value=30.0, value=70.0, step=0.5)
             
             st.markdown("---")
             
-            # --- 🤸 1. FMS ---
             st.markdown("#### 🤸 1. Protocolo FMS (0 a 3)")
             cf1, cf2, cf3, cf4, cf5 = st.columns(5)
             with cf1: fms_sentadilla = st.number_input("Sentadilla", 0, 3, 3)
@@ -531,7 +470,6 @@ with tab_nuevo:
 
             st.markdown("---")
             
-            # --- 🦘 2. SALTO ---
             st.markdown("#### 🦘 2. Test de Salto (cm)")
             cs1, cs2, cs3, cs4, cs5 = st.columns(5)
             with cs1: cmj_bi = st.number_input("CMJ Bilateral", min_value=0.0, value=0.0, step=0.5)
@@ -542,7 +480,6 @@ with tab_nuevo:
 
             st.markdown("---")
             
-            # --- ⚡ 3. ISOMETRÍA ---
             st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica (N)")
             ci1, ci2, ci3, ci4 = st.columns(4)
             with ci1:
@@ -568,9 +505,7 @@ with tab_nuevo:
 
             st.markdown("---")
             
-            # --- 🏋️‍♂️ 4. 1RM ---
             st.markdown("#### 🏋️‍♂️ 4. Perfil Carga-Velocidad y 1RM")
-            
             st.markdown("**Sentadilla**")
             c_sq = st.columns(10)
             p_sq, v_sq = [], []
@@ -600,9 +535,18 @@ with tab_nuevo:
             
             if st.form_submit_button("💾 Guardar Valoración Completa", use_container_width=True):
                 try:
+                    # =========================================================
+                    # CÁLCULOS AUTOMÁTICOS ANTES DE GUARDAR
+                    # =========================================================
+                    temp_calculada = obtener_temporada(fecha_test)
+                    num_val_calculado = calcular_num_valoracion(jugador_sel, temp_calculada, valoraciones)
+
                     nuevo_test = {
-                        "jugador_id": jugador_sel, "fecha": str(fecha_test), "temporada": temporada,
-                        "numero_valoracion": int(num_val), "lesion": lesion, "peso_corporal": float(peso),
+                        "jugador_id": jugador_sel, 
+                        "fecha": str(fecha_test), 
+                        "temporada": temp_calculada,             # Automático
+                        "numero_valoracion": num_val_calculado,  # Automático
+                        "lesion": lesion, "peso_corporal": float(peso),
                         "fms_sentadilla": fms_sentadilla,
                         "fms_paso_obstaculo_der": fms_obstaculo_d, "fms_paso_obstaculo_izq": fms_obstaculo_i,
                         "fms_zancada_der": fms_zancada_d, "fms_zancada_izq": fms_zancada_i,
@@ -622,7 +566,7 @@ with tab_nuevo:
                     }
                     supabase.table("valoraciones_condicionales").insert(nuevo_test).execute()
                     cargar_datos_sistema(force_refresh=True)
-                    st.success("¡Valoración guardada correctamente!")
+                    st.success(f"¡Valoración #{num_val_calculado} (Temporada {temp_calculada}) guardada correctamente!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error al guardar: {e}")
@@ -636,7 +580,6 @@ with tab_reg:
     if not valoraciones:
         st.info("No hay valoraciones registradas todavía.")
     else:
-        # 1. DETECCIÓN DE DUPLICADOS
         from collections import Counter
         pares_jugador_fecha = [(v['jugador_id'], v['fecha']) for v in valoraciones]
         duplicados = [item for item, count in Counter(pares_jugador_fecha).items() if count > 1]
@@ -651,7 +594,6 @@ with tab_reg:
         df_vals_completos = pd.DataFrame(valoraciones)
         df_vals_completos['Deportista'] = df_vals_completos['jugador_id'].map(mapa_jugadores)
         
-        # 2. FILTROS DE VISUALIZACIÓN
         cf1, cf2 = st.columns(2)
         with cf1:
             lista_jugadores_unicos = sorted(df_vals_completos['Deportista'].dropna().unique())
@@ -664,7 +606,6 @@ with tab_reg:
         if filtro_jug != "Todos": df_filtrado = df_filtrado[df_filtrado['Deportista'] == filtro_jug]
         if filtro_temp != "Todas": df_filtrado = df_filtrado[df_filtrado['temporada'] == filtro_temp]
 
-        # 3. PREPARACIÓN Y MUESTRA DE LA TABLA
         renombres = {
             'fecha': 'Fecha', 'temporada': 'Temporada', 'numero_valoracion': 'Nº Val.', 'Deportista': 'Deportista', 'lesion': 'Lesión', 'peso_corporal': 'Peso (kg)',
             'fms_sentadilla': 'FMS Sentadilla', 'fms_paso_obstaculo_der': 'FMS Paso Obst. (Der)', 'fms_paso_obstaculo_izq': 'FMS Paso Obst. (Izq)',
@@ -687,7 +628,6 @@ with tab_reg:
         
         st.dataframe(df_mostrar[orden_final], use_container_width=True, hide_index=True)
 
-        # 4. GESTIÓN: MODIFICAR O ELIMINAR REGISTRO
         st.markdown("---")
         st.markdown("#### ⚙️ Gestión: Modificar o Eliminar Registro")
         opciones_gestion = {row['id']: f"{row['Deportista']} - {row['fecha']} (Val. {row['numero_valoracion']})" for idx, row in df_filtrado.iterrows()}
@@ -701,17 +641,15 @@ with tab_reg:
                 with st.form("form_editar_valoracion"):
                     st.info(f"Modificando datos de: **{mapa_jugadores.get(val_actual.get('jugador_id'), '')}**")
                     
-                    # DATOS GENERALES
                     st.markdown("**⚙️ Datos Básicos**")
-                    ce1, ce2, ce3, ce4 = st.columns(4)
+                    # TAMBIÉN SE ELIMINARON LOS CAMPOS AQUI
+                    ce1, ce2, ce3 = st.columns(3)
                     with ce1: e_fecha = st.date_input("Fecha:", value=pd.to_datetime(val_actual.get('fecha')).date())
-                    with ce2: e_num = st.number_input("Nº Val:", min_value=1, value=int(val_actual.get('numero_valoracion', 1)))
-                    with ce3: 
+                    with ce2: 
                         les_idx = 0 if val_actual.get('lesion') == "No" else 1
                         e_lesion = st.radio("¿Lesión activa?", ["No", "Sí"], index=les_idx, horizontal=True)
-                    with ce4: e_peso = st.number_input("Peso (kg):", min_value=30.0, value=float(val_actual.get('peso_corporal', 70.0)))
+                    with ce3: e_peso = st.number_input("Peso (kg):", min_value=30.0, value=float(val_actual.get('peso_corporal', 70.0)))
 
-                    # FMS
                     st.markdown("**🤸 1. Protocolo FMS**")
                     cf_e1, cf_e2, cf_e3, cf_e4, cf_e5, cf_e6 = st.columns(6)
                     with cf_e1: 
@@ -732,7 +670,6 @@ with tab_reg:
                     with cf_e6:
                         ef_rot = st.number_input("Est. Rotatoria", 0, 3, int(val_actual.get('fms_estabilidad_rotatoria', 0)))
 
-                    # SALTO Y VECTORES
                     st.markdown("**🦘 2. Salto (cm)**")
                     cs_e1, cs_e2, cs_e3, cs_e4, cs_e5 = st.columns(5)
                     with cs_e1: e_cmj_bi = st.number_input("CMJ Bi", value=float(val_actual.get('cmj_bilateral', 0)))
@@ -741,7 +678,6 @@ with tab_reg:
                     with cs_e4: e_sh_d = st.number_input("Horiz. D", value=float(val_actual.get('salto_horiz_der', 0)))
                     with cs_e5: e_sh_i = st.number_input("Horiz. I", value=float(val_actual.get('salto_horiz_izq', 0)))
 
-                    # ISOMETRÍA
                     st.markdown("**⚡ 3. Isometría (N)**")
                     ci_e1, ci_e2, ci_e3, ci_e4 = st.columns(4)
                     with ci_e1:
@@ -757,7 +693,6 @@ with tab_reg:
                         e_abd_d = st.number_input("Abducción D", value=float(val_actual.get('iso_abd_cadera_der', 0)))
                         e_abd_i = st.number_input("Abducción I", value=float(val_actual.get('iso_abd_cadera_izq', 0)))
 
-                    # RM Y COMENTARIOS
                     st.markdown("**🏋️‍♂️ 4. RM Estimado y Observaciones**")
                     cr_e1, cr_e2, cr_e3 = st.columns([1, 1, 2])
                     with cr_e1: e_rm_sq = st.number_input("1RM Sentadilla", value=float(val_actual.get('rm_sentadilla', 0)))
@@ -766,8 +701,22 @@ with tab_reg:
 
                     if st.form_submit_button("💾 Guardar Modificaciones", use_container_width=True):
                         try:
+                            # =========================================================
+                            # RE-CÁLCULOS AL EDITAR (por si cambió de fecha)
+                            # =========================================================
+                            temp_calculada = obtener_temporada(e_fecha)
+                            
+                            # Si mantiene la temporada, respeta su número. Si cambia a otra temporada, lo recalcula.
+                            if temp_calculada == val_actual.get('temporada'):
+                                num_val_calculado = val_actual.get('numero_valoracion')
+                            else:
+                                num_val_calculado = calcular_num_valoracion(val_actual.get('jugador_id'), temp_calculada, valoraciones, val_seleccionada)
+
                             datos_actualizados = {
-                                "fecha": str(e_fecha), "numero_valoracion": int(e_num), "lesion": e_lesion, "peso_corporal": float(e_peso),
+                                "fecha": str(e_fecha), 
+                                "temporada": temp_calculada,             # Automático
+                                "numero_valoracion": int(num_val_calculado),  # Automático
+                                "lesion": e_lesion, "peso_corporal": float(e_peso),
                                 "fms_sentadilla": ef_sq, "fms_paso_obstaculo_der": ef_obs_d, "fms_paso_obstaculo_izq": ef_obs_i,
                                 "fms_zancada_der": ef_zan_d, "fms_zancada_izq": ef_zan_i, "fms_mov_hombro_der": ef_hom_d, "fms_mov_hombro_izq": ef_hom_i,
                                 "fms_elevacion_pierna_der": ef_pie_d, "fms_elevacion_pierna_izq": ef_pie_i, "fms_estabilidad_tronco": ef_tronco, "fms_estabilidad_rotatoria": ef_rot,
