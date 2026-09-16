@@ -17,7 +17,7 @@ if not st.session_state.get("autenticado", False):
 
 cargar_datos_sistema()
 
-st.title("📊 Valoraciones Condicionales (Gimnasio)")
+st.title("📊 Valoraciones Condicionales")
 
 tab_informes, tab_nuevo, tab_reg = st.tabs(["📈 Informes de valoraciones", "➕ Añadir Nueva Valoración", "📋 Tabla de registros"])
 
@@ -52,7 +52,7 @@ def calcular_num_valoracion(jugador_id, temporada_str, vals_existentes, id_exclu
 # PESTAÑA 1: INFORMES DE VALORACIONES
 # ==========================================
 with tab_informes:
-    st.markdown("### 📈 Informes de Valoraciones y Perfil Individual")
+    st.markdown("### 📈 Perfil Individual")
     
     if not jugadores or not valoraciones:
         st.info("No hay datos suficientes para mostrar informes.")
@@ -181,17 +181,17 @@ with tab_informes:
                                 
                     st.markdown("---")
                     
-                    st.markdown("#### 🤸 1. Análisis de Movilidad y Estabilidad")
+                    st.markdown("#### 🤸 Movilidad y Estabilidad")
                     cm1, cm2, cm3 = st.columns(3)
                     with cm1: tarjeta_kpi("FMS 1: Sentadilla profunda", v_data.get('fms_sentadilla', 0))
-                    with cm2: tarjeta_kpi_doble("FMS 2: Paso Obstáculo", v_data.get('fms_paso_obstaculo_der', 0), v_data.get('fms_paso_obstaculo_izq', 0))
+                    with cm2: tarjeta_kpi_doble("FMS 2: Paso de Obstáculo", v_data.get('fms_paso_obstaculo_der', 0), v_data.get('fms_paso_obstaculo_izq', 0))
                     with cm3: tarjeta_kpi_doble("FMS 3: Zancada en línea", v_data.get('fms_zancada_der', 0), v_data.get('fms_zancada_izq', 0))
                     
                     cm4, cm5, cm6, cm7 = st.columns(4)
-                    with cm4: tarjeta_kpi_doble("FMS 4: Mov. Hombro", v_data.get('fms_mov_hombro_der', 0), v_data.get('fms_mov_hombro_izq', 0))
-                    with cm5: tarjeta_kpi_doble("FMS 5: Elev. Pierna", v_data.get('fms_elevacion_pierna_der', 0), v_data.get('fms_elevacion_pierna_izq', 0))
-                    with cm6: tarjeta_kpi("FMS 6: Est. Tronco", v_data.get('fms_estabilidad_tronco', 0))
-                    with cm7: tarjeta_kpi("FMS 7: Est. Rotatoria", v_data.get('fms_estabilidad_rotatoria', 0))
+                    with cm4: tarjeta_kpi_doble("FMS 4: Movilidad de Hombro", v_data.get('fms_mov_hombro_der', 0), v_data.get('fms_mov_hombro_izq', 0))
+                    with cm5: tarjeta_kpi_doble("FMS 5: Elevación de Pierna", v_data.get('fms_elevacion_pierna_der', 0), v_data.get('fms_elevacion_pierna_izq', 0))
+                    with cm6: tarjeta_kpi("FMS 6: Estabilidad de Tronco", v_data.get('fms_estabilidad_tronco', 0))
+                    with cm7: tarjeta_kpi("FMS 7: Estabilidad Rotatoria", v_data.get('fms_estabilidad_rotatoria', 0))
 
                     mov_total = sum([v_data.get('fms_mov_hombro_der',0), v_data.get('fms_mov_hombro_izq',0), v_data.get('fms_elevacion_pierna_der',0), v_data.get('fms_elevacion_pierna_izq',0)])
                     ctrl_total = sum([v_data.get('fms_sentadilla',0), v_data.get('fms_estabilidad_tronco',0), v_data.get('fms_estabilidad_rotatoria',0), v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0), v_data.get('fms_zancada_der',0), v_data.get('fms_zancada_izq',0)])
@@ -206,11 +206,11 @@ with tab_informes:
 
                     c_fms1, c_fms2 = st.columns(2)
                     c_fms1.info(f"**Clúster Movilidad:** {mov_total} / 12 pts | {mov_badge}\n\n*(Movilidad de hombro + Elevación de pierna recta)*")
-                    c_fms2.info(f"**Clúster Control Motor:** {ctrl_total} / 21 pts | {ctrl_badge}\n\n*(Sentadilla + Paso obstáculo + Zancada + Estabilidad tronco + Est. rotatoria)*")
+                    c_fms2.info(f"**Clúster Control Motor:** {ctrl_total} / 21 pts | {ctrl_badge}\n\n*(Sentadilla + Paso de obstáculo + Zancada + Estabilidad)*")
 
                     st.markdown("---")
                     
-                    st.markdown("#### 🦘 2. Rendimiento en Salto y Vectores")
+                    st.markdown("#### 🦘 Salto")
                     cs1, cs2, cs3 = st.columns(3)
                     with cs1: tarjeta_kpi("Salto Vertical Bilateral", f"{v_data.get('cmj_bilateral', 0)} cm")
                     with cs2: tarjeta_kpi_doble("Salto Vertical Unilateral", f"{v_data.get('cmj_uni_der', 0)} cm", f"{v_data.get('cmj_uni_izq', 0)} cm")
@@ -243,7 +243,7 @@ with tab_informes:
 
                     st.markdown("---")
 
-                    st.markdown("#### ⚡ 3. Fuerza Máxima Isométrica y Fuerza Relativa")
+                    st.markdown("#### ⚡ Fuerza Máxima Isométrica y Fuerza Relativa")
                     ci1, ci2, ci3, ci4 = st.columns(4)
                     with ci1: tarjeta_kpi_doble("Extensión (Cuád)", f"{v_data.get('iso_ext_rodilla_der', 0)} N", f"{v_data.get('iso_ext_rodilla_izq', 0)} N")
                     with ci2: tarjeta_kpi_doble("Flexión (Isq)", f"{v_data.get('iso_flex_rodilla_der', 0)} N", f"{v_data.get('iso_flex_rodilla_izq', 0)} N")
@@ -284,10 +284,10 @@ with tab_informes:
                     
                     st.markdown("**Ratios Clínicos de Equilibrio**")
                     cr1, cr2, cr3, cr4 = st.columns(4)
-                    with cr1: st.info(f"**Isquio/Cuád (D):**\n{badge_hq(ratio_hq_d)}\n*(Óptimo > 0.6)*")
-                    with cr2: st.info(f"**Isquio/Cuád (I):**\n{badge_hq(ratio_hq_i)}\n*(Óptimo > 0.6)*")
-                    with cr3: st.info(f"**Adu/Abd (D):**\n{badge_adab(ratio_adab_d)}\n*(Óptimo > 0.9)*")
-                    with cr4: st.info(f"**Adu/Abd (I):**\n{badge_adab(ratio_adab_i)}\n*(Óptimo > 0.9)*")
+                    with cr1: st.info(f"**Isquios /Cuáds (D):**\n{badge_hq(ratio_hq_d)}\n*(Óptimo > 0.6)*")
+                    with cr2: st.info(f"**Isquios /Cuáds (I):**\n{badge_hq(ratio_hq_i)}\n*(Óptimo > 0.6)*")
+                    with cr3: st.info(f"**Add. / Abd. (D):**\n{badge_adab(ratio_adab_d)}\n*(Óptimo > 0.9)*")
+                    with cr4: st.info(f"**Add. / Abd. (I):**\n{badge_adab(ratio_adab_i)}\n*(Óptimo > 0.9)*")
     
                     st.markdown("**Fuerza Relativa Isométrica (N/kg)**")
                     cf_rel1, cf_rel2, cf_rel3, cf_rel4 = st.columns(4)
@@ -298,7 +298,7 @@ with tab_informes:
     
                     st.markdown("---")
 
-                    st.markdown("#### 🏋️‍♂️ 4. Fuerza Máxima, Perfil F-V y DSI")
+                    st.markdown("#### 🏋️‍♂️ Fuerza Máxima")
                     sq_rm = safe_float(v_data.get('rm_sentadilla'))
                     dl_rm = safe_float(v_data.get('rm_peso_muerto'))
                     f_rel_sq = round(sq_rm / peso_actual, 2) if peso_actual > 0 else 0
@@ -389,7 +389,7 @@ with tab_informes:
 
                     st.markdown("---")
                     
-                    st.markdown("#### 🧭 5. Asimetría Direccional Global (El Eslabón Débil)")
+                    st.markdown("#### 🧭 Asimetría Direccional Global")
                     puntos_der, puntos_izq, empates = 0, 0, 0
                     pruebas_uni = [
                         (v_data.get('fms_paso_obstaculo_der',0), v_data.get('fms_paso_obstaculo_izq',0)),
@@ -427,7 +427,7 @@ with tab_informes:
                     st.info(f"**Análisis de Tendencia Direccional:** {dom_txt} | **Eslabón Débil a compensar:** {eslabon_txt}")
 
                     st.markdown("---")
-                    st.markdown("#### 🎯 6. Evolución Geométrica (Radar) y Pautas Clínicas")
+                    st.markdown("#### 🎯 Evolución y Pautas Clínicas")
                     
                     col_rad1, col_rad2 = st.columns([1, 1])
                     with col_rad1:
