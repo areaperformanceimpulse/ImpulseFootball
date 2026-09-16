@@ -61,7 +61,7 @@ total_vals = len(st.session_state.valoraciones)
 col1, col2, col3 = st.columns(3)
 col1.metric("N.º de Deportistas ", total_jugadores)
 col2.metric("N.º de Valoraciones", total_vals)
-col3.metric("Programas", "Academy, Elite, Promise")
+col3.metric("Programas", "Academy, Elite, Promise, OffSeason")
 
 st.markdown("### 🚀 Acceso Directo")
 c1, c2 = st.columns(2)
