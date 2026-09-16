@@ -572,44 +572,27 @@ with tab_nuevo:
         # ---------------------------------------------------------
         else:
             st.markdown("#### 📁 Importación Masiva (Excel)")
-            st.info("💡 Asegúrate de que los nombres de los deportistas en el Excel coinciden exactamente con los registrados en la plataforma. Las temporadas y números de valoración se calcularán solos.")
             
-            # --- ⚠️ MODIFICA ESTO SI LAS COLUMNAS DE TU EXCEL TIENEN OTRO NOMBRE ---
+            with st.expander("👀 Ver lista de nombres exactos registrados en la base de datos"):
+                if jugadores:
+                    nombres_db = sorted([j['nombre'] for j in jugadores])
+                    st.dataframe(pd.DataFrame(nombres_db, columns=["Nombres válidos en el sistema"]), use_container_width=True, hide_index=True)
+                else:
+                    st.write("Aún no hay deportistas registrados.")
+            
+            # --- MAPEO ADAPTADO EXACTAMENTE A TUS COLUMNAS ---
             MAPEO = {
-                "nombre": "Nombre",             # Nombre de la columna en tu Excel que tiene el nombre del jugador
-                "fecha": "Fecha",               # Formato de fecha válido
-                "peso": "Peso",                 # Peso corporal
-                "lesion": "Lesion",             # "Sí" o "No"
-                # FMS (Ajustado a tus indicaciones)
-                "fms1_d": "FMS 1 Hombro Der",
-                "fms1_i": "FMS 1 Hombro Izq",
-                "fms2": "FMS 2 Sentadilla",
-                "fms3_d": "FMS 3 Pierna Der",
-                "fms3_i": "FMS 3 Pierna Izq",
-                "fms4_d": "FMS 4 Obstaculo Der",
-                "fms4_i": "FMS 4 Obstaculo Izq",
-                "fms5_d": "FMS 5 Zancada Der",
-                "fms5_i": "FMS 5 Zancada Izq",
-                "fms6": "FMS 6 Tronco",
-                "fms7": "FMS 7 Rotatoria",
-                # Salto
-                "cmj_bi": "CMJ Bilateral",
-                "cmj_ud": "CMJ Uni Der",
-                "cmj_ui": "CMJ Uni Izq",
-                "sh_d": "Salto Horiz Der",
-                "sh_i": "Salto Horiz Izq",
-                # Isometria
-                "iso_ext_d": "Iso Ext Cuad Der",
-                "iso_ext_i": "Iso Ext Cuad Izq",
-                "iso_flx_d": "Iso Flex Isq Der",
-                "iso_flx_i": "Iso Flex Isq Izq",
-                "iso_add_d": "Iso Add Cadera Der",
-                "iso_add_i": "Iso Add Cadera Izq",
-                "iso_abd_d": "Iso Abd Cadera Der",
-                "iso_abd_i": "Iso Abd Cadera Izq",
-                # RM 
-                "rm_sq": "1RM Sentadilla",
-                "rm_pm": "1RM Peso Muerto"
+                "nombre": "NOMBRE", "fecha": "FECHA", "lesion": "LESIÓN", "peso": "PESO",
+                "fms1_d": "FMS1. D", "fms1_nd": "FMS1. ND", "fms2": "FMS2.",
+                "fms3_d": "FMS3. D", "fms3_nd": "FMS3. ND", "fms4_d": "FMS4. D", "fms4_nd": "FMS4. ND",
+                "fms5_d": "FMS5. D", "fms5_nd": "FMS5. ND", "fms6": "FMS6", "fms7": "FMS7",
+                "sh_d": "SH. D", "sh_nd": "SH. ND", "cmj_bi": "CMJ", "cmj_d": "CMJ D", "cmj_nd": "CMJ ND",
+                "er_d": "ER D", "er_nd": "ER ND", "fr_d": "FR D", "fr_nd": "FR ND",
+                "abd_d": "ABD D", "abd_nd": "ABD ND", "ad_d": "AD D", "ad_nd": "AD ND",
+                "sq_kg": ["SQ KG 1", "SQ KG 2", "SQ KG 3", "SQ KG 4", "SQ KG 5"],
+                "sq_v": ["SQ V 1", "SQ V 2", "SQ V 3", "SQ V 4", "SQ V 5"],
+                "rdl_kg": ["RDL KG 1", "RDL KG 2", "RDL KG 3", "RDL KG 4", "RDL KG 5"],
+                "rdl_v": ["RDL V 1", "RDL V 2", "RDL V 3", "RDL V 4", "RDL V 5"]
             }
 
             archivo = st.file_uploader("Sube tu plantilla Excel (.xlsx)", type=["xlsx", "xls"])
@@ -624,11 +607,8 @@ with tab_nuevo:
                         registros_exitosos = 0
                         errores = []
                         
-                        # Bucle por cada fila del Excel
                         for idx, row in df_import.iterrows():
                             nombre_excel = str(row.get(MAPEO["nombre"], "")).strip()
-                            
-                            # Buscar jugador en la BBDD (insensible a mayúsculas)
                             jugador_db = next((j for j in jugadores if j['nombre'].lower() == nombre_excel.lower()), None)
                             
                             if not jugador_db:
@@ -640,74 +620,91 @@ with tab_nuevo:
                                 temp_calc = obtener_temporada(fecha_obj)
                                 num_val_calc = calcular_num_valoracion(jugador_db['id'], temp_calc, valoraciones)
                                 
-                                # Si un dato numérico viene vacío en excel (NaN), lo pasamos a 0.0
-                                def s(val):
-                                    return 0.0 if pd.isna(val) else float(val)
+                                # Función para sanear vacíos de excel
+                                def s(val): return 0.0 if pd.isna(val) else float(val)
+                                
+                                # Lógica inteligente: D/ND -> Der/Izq según perfil del jugador
+                                def map_d_nd(val_d, val_nd, is_brazo=False):
+                                    dom = jugador_db.get('brazo_dominante' if is_brazo else 'pierna_dominante', 'Derecho' if is_brazo else 'Derecha')
+                                    # Si es zurdo, invertimos el guardado en base de datos
+                                    if dom in ['Izquierdo', 'Izquierda']:
+                                        return {"der": s(val_nd), "izq": s(val_d)}
+                                    return {"der": s(val_d), "izq": s(val_nd)}
+
+                                # Extracción de perfiles F-V
+                                p_sq = [s(row.get(col)) for col in MAPEO["sq_kg"]]
+                                v_sq = [s(row.get(col)) for col in MAPEO["sq_v"]]
+                                p_rdl = [s(row.get(col)) for col in MAPEO["rdl_kg"]]
+                                v_rdl = [s(row.get(col)) for col in MAPEO["rdl_v"]]
+
+                                # Cálculo de 1RM automático
+                                def calcular_rm_final_import(pesos, vels):
+                                    validas = [(pesos[i], vels[i]) for i in range(5) if vels[i] > 0 and pesos[i] > 0]
+                                    if validas:
+                                        p_max, v_max = max(validas, key=lambda x: x[0])
+                                        return round(p_max / v_max, 1)
+                                    return round(max(pesos), 1) if max(pesos) > 0 else 0.0
+                                    
+                                fms1 = map_d_nd(row.get(MAPEO["fms1_d"]), row.get(MAPEO["fms1_nd"]), is_brazo=True)
+                                fms3 = map_d_nd(row.get(MAPEO["fms3_d"]), row.get(MAPEO["fms3_nd"]))
+                                fms4 = map_d_nd(row.get(MAPEO["fms4_d"]), row.get(MAPEO["fms4_nd"]))
+                                fms5 = map_d_nd(row.get(MAPEO["fms5_d"]), row.get(MAPEO["fms5_nd"]))
+                                sh = map_d_nd(row.get(MAPEO["sh_d"]), row.get(MAPEO["sh_nd"]))
+                                cmj = map_d_nd(row.get(MAPEO["cmj_d"]), row.get(MAPEO["cmj_nd"]))
+                                iso_ext = map_d_nd(row.get(MAPEO["er_d"]), row.get(MAPEO["er_nd"]))
+                                iso_flx = map_d_nd(row.get(MAPEO["fr_d"]), row.get(MAPEO["fr_nd"]))
+                                iso_abd = map_d_nd(row.get(MAPEO["abd_d"]), row.get(MAPEO["abd_nd"]))
+                                iso_add = map_d_nd(row.get(MAPEO["ad_d"]), row.get(MAPEO["ad_nd"]))
 
                                 nuevo_test = {
                                     "jugador_id": jugador_db['id'], 
                                     "fecha": str(fecha_obj), 
                                     "temporada": temp_calc,
                                     "numero_valoracion": num_val_calc,
-                                    "lesion": "Sí" if str(row.get(MAPEO["lesion"], "")).lower().strip() in ["sí", "si", "yes"] else "No",
+                                    "lesion": "Sí" if str(row.get(MAPEO["lesion"], "")).lower().strip() in ["sí", "si", "yes", "s", "1"] else "No",
                                     "peso_corporal": s(row.get(MAPEO["peso"])),
                                     # FMS
-                                    "fms_mov_hombro_der": int(s(row.get(MAPEO["fms1_d"]))),
-                                    "fms_mov_hombro_izq": int(s(row.get(MAPEO["fms1_i"]))),
+                                    "fms_mov_hombro_der": int(fms1["der"]), "fms_mov_hombro_izq": int(fms1["izq"]),
                                     "fms_sentadilla": int(s(row.get(MAPEO["fms2"]))),
-                                    "fms_elevacion_pierna_der": int(s(row.get(MAPEO["fms3_d"]))),
-                                    "fms_elevacion_pierna_izq": int(s(row.get(MAPEO["fms3_i"]))),
-                                    "fms_paso_obstaculo_der": int(s(row.get(MAPEO["fms4_d"]))),
-                                    "fms_paso_obstaculo_izq": int(s(row.get(MAPEO["fms4_i"]))),
-                                    "fms_zancada_der": int(s(row.get(MAPEO["fms5_d"]))),
-                                    "fms_zancada_izq": int(s(row.get(MAPEO["fms5_i"]))),
+                                    "fms_elevacion_pierna_der": int(fms3["der"]), "fms_elevacion_pierna_izq": int(fms3["izq"]),
+                                    "fms_paso_obstaculo_der": int(fms4["der"]), "fms_paso_obstaculo_izq": int(fms4["izq"]),
+                                    "fms_zancada_der": int(fms5["der"]), "fms_zancada_izq": int(fms5["izq"]),
                                     "fms_estabilidad_tronco": int(s(row.get(MAPEO["fms6"]))),
                                     "fms_estabilidad_rotatoria": int(s(row.get(MAPEO["fms7"]))),
                                     # Salto
                                     "cmj_bilateral": s(row.get(MAPEO["cmj_bi"])),
-                                    "cmj_uni_der": s(row.get(MAPEO["cmj_ud"])),
-                                    "cmj_uni_izq": s(row.get(MAPEO["cmj_ui"])),
-                                    "salto_horiz_der": s(row.get(MAPEO["sh_d"])),
-                                    "salto_horiz_izq": s(row.get(MAPEO["sh_i"])),
-                                    # Isometria
-                                    "iso_ext_rodilla_der": s(row.get(MAPEO["iso_ext_d"])),
-                                    "iso_ext_rodilla_izq": s(row.get(MAPEO["iso_ext_i"])),
-                                    "iso_flex_rodilla_der": s(row.get(MAPEO["iso_flx_d"])),
-                                    "iso_flex_rodilla_izq": s(row.get(MAPEO["iso_flx_i"])),
-                                    "iso_add_cadera_der": s(row.get(MAPEO["iso_add_d"])),
-                                    "iso_add_cadera_izq": s(row.get(MAPEO["iso_add_i"])),
-                                    "iso_abd_cadera_der": s(row.get(MAPEO["iso_abd_d"])),
-                                    "iso_abd_cadera_izq": s(row.get(MAPEO["iso_abd_i"])),
-                                    # RM (dejamos los perfiles de kg y m/s vacíos en importación masiva)
-                                    "rm_sentadilla": s(row.get(MAPEO["rm_sq"])),
-                                    "rm_peso_muerto": s(row.get(MAPEO["rm_pm"])),
-                                    "perfil_sentadilla": {"kg": [], "vel": []},
-                                    "perfil_peso_muerto": {"kg": [], "vel": []},
+                                    "cmj_uni_der": cmj["der"], "cmj_uni_izq": cmj["izq"],
+                                    "salto_horiz_der": sh["der"], "salto_horiz_izq": sh["izq"],
+                                    # Isometría
+                                    "iso_ext_rodilla_der": iso_ext["der"], "iso_ext_rodilla_izq": iso_ext["izq"],
+                                    "iso_flex_rodilla_der": iso_flx["der"], "iso_flex_rodilla_izq": iso_flx["izq"],
+                                    "iso_add_cadera_der": iso_add["der"], "iso_add_cadera_izq": iso_add["izq"],
+                                    "iso_abd_cadera_der": iso_abd["der"], "iso_abd_cadera_izq": iso_abd["izq"],
+                                    # RM y Perfiles (Cálculo y guardado)
+                                    "rm_sentadilla": float(calcular_rm_final_import(p_sq, v_sq)),
+                                    "rm_peso_muerto": float(calcular_rm_final_import(p_rdl, v_rdl)),
+                                    "perfil_sentadilla": {"kg": p_sq, "vel": v_sq},
+                                    "perfil_peso_muerto": {"kg": p_rdl, "vel": v_rdl},
                                     "comentarios": "Importado desde Excel."
                                 }
                                 
                                 supabase.table("valoraciones_condicionales").insert(nuevo_test).execute()
-                                # Tras guardar uno, debemos simular que hemos cargado para que si el excel tiene 2 registros del mismo jugador, calcule bien el Nº de valoración.
                                 valoraciones.append(nuevo_test)
                                 registros_exitosos += 1
                                 
                             except Exception as e_row:
-                                errores.append(f"Fila {idx+2} ({nombre_excel}): Error de formato en los datos - {e_row}")
+                                errores.append(f"Fila {idx+2} ({nombre_excel}): Error de formato - {e_row}")
                                 
-                        # Resultados de la importación
                         cargar_datos_sistema(force_refresh=True)
                         if registros_exitosos > 0:
                             st.success(f"¡Se han importado {registros_exitosos} valoraciones correctamente!")
-                        
                         if errores:
-                            st.error("Se encontraron los siguientes errores y esas filas no se guardaron:")
-                            for err in errores:
-                                st.write(f"- {err}")
-                        
+                            st.error("Se encontraron errores:")
+                            for err in errores: st.write(f"- {err}")
                         if registros_exitosos > 0:
                             st.rerun()
                 except Exception as e:
-                    st.error(f"Error general al leer el Excel. Comprueba que el formato es correcto: {e}")
+                    st.error(f"Error general al procesar el Excel: {e}")
 
 # ==========================================
 # PESTAÑA 3: TABLA DE REGISTROS Y GESTIÓN
