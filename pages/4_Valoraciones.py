@@ -723,12 +723,17 @@ with tab_nuevo:
                     with c_pm[s*2]: p_pm.append(st.number_input(f"S{s+1}(kg)", min_value=0.0, step=2.5, key=f"pm_p_{s}"))
                     with c_pm[s*2+1]: v_pm.append(st.number_input(f"S{s+1}(m/s)", min_value=0.0, step=0.01, key=f"pm_v_{s}"))
     
-                def calcular_rm_final(pesos, vels):
+                def calcular_rm_final(pesos, vels, mvt=0.30):
                     validas = [(pesos[i], vels[i]) for i in range(5) if vels[i] > 0 and pesos[i] > 0]
+                    if len(validas) > 1:
+                        kgs = np.array([v[0] for v in validas])
+                        vs = np.array([v[1] for v in validas])
+                        slope, intercept = np.polyfit(kgs, vs, 1)
+                        if slope < 0:
+                            return round((mvt - intercept) / slope, 1)
                     if validas:
-                        p_max, v_max = max(validas, key=lambda x: x[0])
-                        return round(p_max / v_max, 1)
-                    return round(max(pesos), 1) if max(pesos) > 0 else 0.0
+                        return round(max(validas, key=lambda x: x[0])[0], 1)
+                    return 0.0
     
                 rm_sq = calcular_rm_final(p_sq, v_sq)
                 rm_pm = calcular_rm_final(p_pm, v_pm)
@@ -888,12 +893,17 @@ with tab_nuevo:
                                 p_rdl = [s(row.get(col)) for col in MAPEO["rdl_kg"]]
                                 v_rdl = [s(row.get(col)) for col in MAPEO["rdl_v"]]
 
-                                def calcular_rm_final_import(pesos, vels):
+                                def calcular_rm_final_import(pesos, vels, mvt=0.30):
                                     validas = [(pesos[i], vels[i]) for i in range(5) if vels[i] > 0 and pesos[i] > 0]
+                                    if len(validas) > 1:
+                                        kgs = np.array([v[0] for v in validas])
+                                        vs = np.array([v[1] for v in validas])
+                                        slope, intercept = np.polyfit(kgs, vs, 1)
+                                        if slope < 0:
+                                            return round((mvt - intercept) / slope, 1)
                                     if validas:
-                                        p_max, v_max = max(validas, key=lambda x: x[0])
-                                        return round(p_max / v_max, 1)
-                                    return round(max(pesos), 1) if max(pesos) > 0 else 0.0
+                                        return round(max(validas, key=lambda x: x[0])[0], 1)
+                                    return 0.0
                                     
                                 fms1 = map_d_nd(row.get(MAPEO["fms1_d"]), row.get(MAPEO["fms1_nd"]), is_brazo=True)
                                 fms3 = map_d_nd(row.get(MAPEO["fms3_d"]), row.get(MAPEO["fms3_nd"]))
