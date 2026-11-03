@@ -157,9 +157,11 @@ with tab_planificacion:
                             
                             contexto_jugadores = "\n".join(perfiles_clinicos) if perfiles_clinicos else "Sin valoraciones registradas para estos deportistas."
 
-                            # 2. Configuración Estricta de la API con el modelo validado
+                            # 2. Configuración Estricta de la API
                             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                            model = genai.GenerativeModel('gemini-3.8-flash')
+                            
+                            # Ruta absoluta obligatoria
+                            model = genai.GenerativeModel('models/gemini-3.8-flash')
                             
                             # 3. Prompting de Élite
                             prompt = f"""
@@ -172,7 +174,7 @@ with tab_planificacion:
                             - Perfiles Biomecánicos (Focaliza las tareas en compensar estos déficits):
                             {contexto_jugadores}
 
-                            Devuelve ÚNICA Y EXCLUSIVAMENTE un objeto JSON válido con esta estructura exacta. Cero texto introductorio, cero explicaciones:
+                            ESTRUCTURA EXACTA DEL JSON REQUERIDO:
                             {{
                                 "activacion": "Pautas (10-15'). Ejercicios, series, repeticiones.",
                                 "core": "Estabilidad (10'). Ejercicios, series, tiempos de tensión.",
@@ -180,17 +182,16 @@ with tab_planificacion:
                             }}
                             """
                             
-                            res = model.generate_content(prompt)
+                            # 4. Llamada con TIMEOUT (15s) y MODO JSON NATIVO
+                            res = model.generate_content(
+                                prompt,
+                                generation_config={"response_mime_type": "application/json"},
+                                request_options={"timeout": 15.0}
+                            )
                             
-                            # 4. Parseo Quirúrgico y Anti-Fallos del JSON
-                            texto_limpio = res.text.strip()
-                            if texto_limpio.startswith("```"):
-                                lineas = texto_limpio.split("\n")
-                                texto_limpio = "\n".join(lineas[1:-1]) if len(lineas) > 2 else texto_limpio
-                                
-                            sesion_ia = json.loads(texto_limpio)
+                            # 5. Parseo y guardado directo (el modo JSON nativo garantiza la estructura)
+                            sesion_ia = json.loads(res.text)
                             
-                            # 5. Inserción directa en Base de Datos
                             supabase.table("sesiones_entrenamiento").update({
                                 "activacion": sesion_ia.get("activacion", ""),
                                 "core": sesion_ia.get("core", ""),
@@ -204,10 +205,8 @@ with tab_planificacion:
                             cargar_datos_sistema(force_refresh=True)
                             st.rerun()
                             
-                        except json.JSONDecodeError as e_json:
-                            st.error(f"Error: La IA no devolvió un formato válido. Respuesta cruda: {res.text}")
                         except Exception as e:
-                            st.error(f"Error detallado de conexión: {str(e)}")
+                            st.error(f"Error técnico o Timeout al generar la sesión: {str(e)}")
             
             # 3. Estructura de la sesión
             st.markdown("**3. Estructura de Tareas**")
