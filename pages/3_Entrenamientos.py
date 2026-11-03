@@ -161,7 +161,7 @@ with tab_planificacion:
                             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
                             
                             # IDENTIFICADOR TÉCNICO OBLIGATORIO (No usar nombres de la interfaz web)
-                            model = genai.GenerativeModel('gemini-1.5-flash')
+                            model = genai.GenerativeModel('gemini-pro')
                             
                             # 3. Prompting de Élite
                             prompt = f"""
