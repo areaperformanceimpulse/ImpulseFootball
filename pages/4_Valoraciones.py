@@ -775,7 +775,20 @@ with tab_nuevo:
         # ---------------------------------------------------------
         else:
             st.markdown("#### 📁 Importación Masiva (Excel)")
-            
+
+            with st.expander("ℹ️ Ayuda de Mapeo: Protocolo FMS"):
+                st.markdown("""
+                Asegúrate de que las cabeceras de tu Excel coinciden exactamente con la base de datos:
+                *   **FMS 1 (Hombro):** `FMS1. D` y `FMS1. ND`
+                *   **FMS 2 (Sentadilla):** `FMS2.` (Cuidado con el punto final)
+                *   **FMS 3 (Elev. Pierna):** `FMS3. D` y `FMS3. ND`
+                *   **FMS 4 (Obstáculo):** `FMS4. D` y `FMS4. ND`
+                *   **FMS 5 (Zancada):** `FMS5. D` y `FMS5. ND`
+                *   **FMS 6 (Tronco):** `FMS6`
+                *   **FMS 7 (Rotatoria):** `FMS7`
+                *(D = Dominante / Pierna evaluada, ND = No Dominante)*
+                """)
+    
             with st.expander("👀 Ver lista de nombres exactos registrados en la base de datos"):
                 if jugadores:
                     nombres_db = sorted([j['nombre'] for j in jugadores])
