@@ -17,13 +17,11 @@ cargar_datos_sistema()
 
 st.title("📅 Calendario y Planificación de Sesiones")
 
-tab_nueva, tab_visual, tab_historial = st.tabs(["➕ Programar Nueva Sesión", "🗓️ Vista Visual", "✏️ Modificar / Gestionar Sesión"])
+# NUEVO ORDEN DE PESTAÑAS
+tab_calendario, tab_nueva, tab_historial = st.tabs(["📅 Calendario Mensual", "➕ Programar Nueva Sesión", "✏️ Modificar / Gestionar Sesión"])
 
 jugadores = st.session_state.get("jugadores", [])
 sesiones = st.session_state.get("sesiones", [])
-
-# Lista simulada de entrenadores (puedes adaptarla a tu tabla de usuarios si la tienes)
-lista_entrenadores = ["Entrenador Principal (Staff)", "Preparador Físico (PF)", "Segundo Entrenador", "Entrenador de Porteros"]
 
 # ==========================================
 # PESTAÑA 1: PROGRAMAR NUEVA SESIÓN
@@ -34,7 +32,7 @@ with tab_nueva:
     if not jugadores:
         st.warning("No hay deportistas registrados en el sistema.")
     else:
-        c1, c2, c3 = st.columns(3)
+        c1, c2 = st.columns(2)
         
         with c1:
             fecha_sesion = st.date_input("Fecha del Entrenamiento:", value=date.today())
@@ -42,52 +40,35 @@ with tab_nueva:
             tipo_sesion = st.selectbox("Tipo de Sesión:", options=["Campo", "Gimnasio"])
             
         with c2:
-            # Al estar fuera de un form, esto recargará la página al cambiar y actualizará los jugadores abajo
             programa_sel = st.selectbox("Programa de Entrenamiento:", options=["Academy", "Elite", "Promise", "OffSeason"])
-            entrenador_sel = st.selectbox("Entrenador Responsable:", options=lista_entrenadores)
-            
-            # Filtro dinámico inmediato
             jugadores_filtrados = [j for j in jugadores if j.get("programa") == programa_sel]
             nombres_filtrados = [j["nombre"] for j in jugadores_filtrados]
-            
-        with c3:
-            comentarios = st.text_area("Foco de la Sesión / Observaciones:", height=135, placeholder="Ej: Trabajo de fuerza explosiva y transiciones...")
 
         st.markdown("---")
         asistentes = st.multiselect(
             f"Deportistas Convocados ({len(nombres_filtrados)} disponibles en {programa_sel}):", 
             options=nombres_filtrados,
-            default=nombres_filtrados # Por defecto todos los del grupo
+            default=nombres_filtrados
         )
         
         st.markdown("")
-        if st.button("💾 Guardar y Validar Sesión", use_container_width=True):
+        if st.button("💾 Guardar Sesión", use_container_width=True):
             if not asistentes:
                 st.error("Debes seleccionar al menos un deportista para la sesión.")
             else:
-                # VALIDACIÓN ANTI-SOLAPES DE ENTRENADOR
-                conflicto_entrenador = False
-                for s in sesiones:
-                    if s.get("fecha") == str(fecha_sesion) and s.get("hora_inicio") == str(hora_sesion) and s.get("entrenador") == entrenador_sel:
-                        conflicto_entrenador = True
-                        break
-                
-                if conflicto_entrenador:
-                    st.warning(f"⚠️ **Aviso de Solape:** El entrenador '{entrenador_sel}' ya tiene asignada otra sesión el {fecha_sesion} a las {hora_sesion}. La sesión se guardará igualmente.")
-                
                 try:
                     nueva_sesion = {
+                        "usuario_id": st.session_state.get("usuario_id"), # VINCULACIÓN DE SEGURIDAD
                         "fecha": str(fecha_sesion),
                         "hora_inicio": str(hora_sesion),
                         "tipo": tipo_sesion,
                         "programa": programa_sel,
-                        "entrenador": entrenador_sel,
                         "asistentes": asistentes,
-                        "comentarios": comentarios
+                        "comentarios": ""
                     }
                     supabase.table("sesiones_entrenamiento").insert(nueva_sesion).execute()
                     cargar_datos_sistema(force_refresh=True)
-                    st.success(f"¡Sesión de {tipo_sesion} programada correctamente para el {fecha_sesion} a las {hora_sesion}!")
+                    st.success(f"¡Sesión de {tipo_sesion} programada correctamente para el {fecha_sesion}!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error al guardar la sesión: {e}")
@@ -95,44 +76,53 @@ with tab_nueva:
 # ==========================================
 # PESTAÑA 2: VISTA VISUAL & HISTORIAL
 # ==========================================
-with tab_visual:
-    st.markdown("### 🗓️ Parrilla de Sesiones Programadas")
+with tab_calendario:
+    st.markdown("### 📅 Vista Mensual de Sesiones")
     
     if not sesiones:
-        st.info("Aún no hay sesiones registradas en el calendario.")
+        st.info("Aún no hay sesiones registradas.")
     else:
+        import calendar
+        hoy = date.today()
+        
+        c_mes1, c_mes2, c_mes3 = st.columns([1, 2, 1])
+        with c_mes2:
+            mes_sel = st.selectbox("Mes:", range(1, 13), index=hoy.month - 1, format_func=lambda x: calendar.month_name[x].capitalize())
+            año_sel = st.selectbox("Año:", range(hoy.year - 1, hoy.year + 2), index=1)
+            
         df_sesiones = pd.DataFrame(sesiones)
-        df_sesiones = df_sesiones.sort_values(by=["fecha", "hora_inicio"], ascending=[False, True])
-        
-        # Filtros de visualización rápidos
-        fc1, fc2, fc3 = st.columns(3)
-        with fc1: filtro_prog = st.selectbox("Filtrar Programa:", ["Todos", "Academy", "Elite", "Promise"], key="f_prog")
-        with fc2: filtro_tipo = st.selectbox("Filtrar Tipo:", ["Todos", "Campo", "Gimnasio"], key="f_tipo")
-        with fc3: filtro_ent = st.selectbox("Filtrar Entrenador:", ["Todos"] + lista_entrenadores, key="f_ent")
-        
-        if filtro_prog != "Todos": df_sesiones = df_sesiones[df_sesiones["programa"] == filtro_prog]
-        if filtro_tipo != "Todos": df_sesiones = df_sesiones[df_sesiones["tipo"] == filtro_tipo]
-        if filtro_ent != "Todos": df_sesiones = df_sesiones[df_sesiones["entrenador"] == filtro_ent]
+        df_sesiones['fecha'] = pd.to_datetime(df_sesiones['fecha'])
+        df_mes = df_sesiones[(df_sesiones['fecha'].dt.month == mes_sel) & (df_sesiones['fecha'].dt.year == año_sel)]
         
         st.markdown("---")
+        cal = calendar.monthcalendar(año_sel, mes_sel)
+        dias_semana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
         
-        if df_sesiones.empty:
-            st.warning("No hay sesiones que coincidan con los filtros seleccionados.")
-        else:
-            for idx, row in df_sesiones.iterrows():
-                tipo_icono = "⚽" if row.get("tipo") == "Campo" else "🏋️‍♂️"
-                hora_str = str(row.get('hora_inicio', '00:00'))[:5]
-                
-                with st.expander(f"{tipo_icono} [{row.get('fecha')} - {hora_str}] Grupo: {row.get('programa')} | Dirige: {row.get('entrenador', 'No asignado')} ({len(row.get('asistentes', []))} asistentes)"):
-                    cd1, cd2 = st.columns([2, 1])
-                    with cd1:
-                        st.markdown(f"**Tipo de Sesión:** {row.get('tipo', 'No especificado')}")
-                        st.markdown(f"**📝 Foco / Observaciones:**")
-                        st.write(row.get("comentarios") if row.get("comentarios") else "Sin observaciones registradas.")
-                    with cd2:
-                        st.markdown("**👥 Deportistas Convocados:**")
-                        for jugador in row.get("asistentes", []):
-                            st.write(f"- {jugador}")
+        # Cabecera días
+        cols_dias = st.columns(7)
+        for i, dia in enumerate(dias_semana):
+            cols_dias[i].markdown(f"<div style='text-align: center; font-weight: 800; color: #64748b;'>{dia}</div>", unsafe_allow_html=True)
+            
+        # Generación de la cuadrícula
+        for semana in cal:
+            cols = st.columns(7)
+            for i, dia in enumerate(semana):
+                with cols[i]:
+                    if dia != 0:
+                        sesiones_dia = df_mes[df_mes['fecha'].dt.day == dia]
+                        fondo = "#f8fafc" if sesiones_dia.empty else "#eef2ff"
+                        borde = "#e2e8f0" if sesiones_dia.empty else "#10833d"
+                        
+                        html_dia = f"<div style='background-color: {fondo}; border: 1px solid {borde}; border-radius: 8px; padding: 10px; min-height: 100px; margin-bottom: 10px;'>"
+                        html_dia += f"<div style='font-weight: 800; font-size: 1.1em; color: #09274e;'>{dia}</div>"
+                        
+                        for _, s in sesiones_dia.iterrows():
+                            icono = "⚽" if s.get('tipo') == 'Campo' else "🏋️"
+                            hora = str(s.get('hora_inicio', ''))[:5]
+                            html_dia += f"<div style='font-size: 0.75em; background: white; padding: 4px; border-radius: 4px; margin-top: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);'><b>{hora}</b> {icono} {s.get('programa')}</div>"
+                            
+                        html_dia += "</div>"
+                        st.markdown(html_dia, unsafe_allow_html=True)
 
 # ==========================================
 # PESTAÑA 3: MODIFICAR / GESTIONAR SESIÓN (FALTAS Y DATOS)
@@ -158,12 +148,9 @@ with tab_historial:
                 with ec2:
                     hora_val = datetime.strptime(str(sesion_actual.get('hora_inicio', '17:00'))[:5], "%H:%M").time()
                     e_hora = st.time_input("Hora de Inicio:", value=hora_val)
-                    e_entrenador = st.selectbox("Entrenador:", options=lista_entrenadores, index=lista_entrenadores.index(sesion_actual.get('entrenador')) if sesion_actual.get('entrenador') in lista_entrenadores else 0)
                 with ec3:
                     e_prog = st.selectbox("Programa:", options=["Academy", "Elite", "Promise", "OffSeason"], index=["Academy", "Elite", "Promise", "OffSeason"].index(sesion_actual.get('programa')) if sesion_actual.get('programa') in ["Academy", "Elite", "Promise", "OffSeason"] else 0)
-                
-                e_comentarios = st.text_area("Foco de la Sesión:", value=sesion_actual.get('comentarios', ''))
-                
+                               
                 st.markdown("---")
                 st.markdown("#### 👥 Gestión de Asistencias y Faltas")
                 st.info("💡 Desmarca de la lista a los jugadores que finalmente **faltaron** a la sesión a pesar de estar convocados.")
@@ -185,9 +172,8 @@ with tab_historial:
                             "hora_inicio": str(e_hora),
                             "tipo": e_tipo,
                             "programa": e_prog,
-                            "entrenador": e_entrenador,
                             "asistentes": e_asistentes,
-                            "comentarios": e_comentarios
+                            "comentarios": "" # Lo mantenemos vacío en BD para no romper esquemas antiguos
                         }
                         supabase.table("sesiones_entrenamiento").update(datos_actualizados).eq("id", sesion_editar_id).execute()
                         cargar_datos_sistema(force_refresh=True)
