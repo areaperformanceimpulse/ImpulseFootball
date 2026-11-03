@@ -185,8 +185,8 @@ with tab_planificacion:
                             (Escribe aquí la fase principal de fuerza/campo de 35-40')
                             """
                             
-                            # 4. Llamada estándar con Timeout de seguridad
-                            res = model.generate_content(prompt, request_options={"timeout": 20.0})
+                            # 4. Llamada estándar con Timeout ampliado (90 segundos)
+                            res = model.generate_content(prompt, request_options={"timeout": 90.0})
                             texto_ia = res.text
                             
                             # 5. Parseo Quirúrgico por fragmentación
