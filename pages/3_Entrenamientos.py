@@ -163,7 +163,7 @@ with tab_planificacion:
 
                             # 2. Configuración del Motor Gemini
                             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                            model = genai.GenerativeModel('gemini-1.5-flash')
+                            model = genai.GenerativeModel('gemini-3.8-flash')
                             
                             # 3. Prompting de Élite (Ingeniería de contexto)
                             prompt = f"""
