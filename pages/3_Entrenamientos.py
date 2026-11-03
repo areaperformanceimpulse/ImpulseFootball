@@ -142,73 +142,17 @@ with tab_planificacion:
                         import json
                         
                         try:
-                            # 1. Extracción de datos biomecánicos
-                            perfiles_clinicos = []
-                            for nombre in conv:
-                                jug = next((j for j in jugadores if j['nombre'] == nombre), None)
-                                if jug:
-                                    vals = [v for v in st.session_state.get("valoraciones", []) if v['jugador_id'] == jug['id']]
-                                    if vals:
-                                        u_val = sorted(vals, key=lambda x: x['fecha'], reverse=True)[0]
-                                        ctrl_motor = u_val.get('fms_sentadilla', 0) + u_val.get('fms_estabilidad_tronco', 0)
-                                        asi_cmj = abs(float(u_val.get('cmj_uni_der', 0)) - float(u_val.get('cmj_uni_izq', 0)))
-                                        asi_isq = abs(float(u_val.get('iso_flex_rodilla_der', 0)) - float(u_val.get('iso_flex_rodilla_izq', 0)))
-                                        perfiles_clinicos.append(f"- {nombre} | Control FMS (Core/SQ): {ctrl_motor}/6 | Asimetría CMJ: {asi_cmj}cm | Asimetría Isquios: {asi_isq}N")
-                            
-                            contexto_jugadores = "\n".join(perfiles_clinicos) if perfiles_clinicos else "Sin valoraciones registradas para estos deportistas."
-
-                            # 2. Configuración Estricta de la API
                             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
                             
-                            # IDENTIFICADOR TÉCNICO OBLIGATORIO (No usar nombres de la interfaz web)
-                            model = genai.GenerativeModel('gemini-pro')
+                            # Interrogar a la API por los modelos disponibles
+                            modelos_validos = []
+                            for m in genai.list_models():
+                                if 'generateContent' in m.supported_generation_methods:
+                                    modelos_validos.append(m.name)
                             
-                            # 3. Prompting de Élite
-                            prompt = f"""
-                            Actúa como un Preparador Físico de Élite especializado en fútbol profesional y Microciclo Estructurado.
-                            Diseña una sesión de 60 minutos basada en:
+                            st.error(f"Modelos técnicos habilitados para tu API Key: {modelos_validos}")
+                            st.stop()
                             
-                            - Contexto: {e_md}
-                            - RPE Objetivo: {e_rpe}/10
-                            - Objetivo: {e_objetivo}
-                            - Perfiles Biomecánicos (Focaliza las tareas en compensar estos déficits):
-                            {contexto_jugadores}
-
-                            Devuelve ÚNICA Y EXCLUSIVAMENTE un objeto JSON válido con esta estructura exacta. Cero texto introductorio, cero explicaciones:
-                            {{
-                                "activacion": "Pautas (10-15'). Ejercicios, series, repeticiones.",
-                                "core": "Estabilidad (10'). Ejercicios, series, tiempos de tensión.",
-                                "principal": "Fase principal (35-40'). Series, repeticiones, %RM o VBT, descansos."
-                            }}
-                            """
-                            
-                            res = model.generate_content(prompt)
-                            
-                            # 4. Parseo Quirúrgico y Anti-Fallos del JSON
-                            texto_limpio = res.text.strip()
-                            if texto_limpio.startswith("```"):
-                                # Extraer solo lo que hay dentro del bloque de código markdown
-                                lineas = texto_limpio.split("\n")
-                                texto_limpio = "\n".join(lineas[1:-1]) if len(lineas) > 2 else texto_limpio
-                                
-                            sesion_ia = json.loads(texto_limpio)
-                            
-                            # 5. Inserción directa en Base de Datos
-                            supabase.table("sesiones_entrenamiento").update({
-                                "activacion": sesion_ia.get("activacion", ""),
-                                "core": sesion_ia.get("core", ""),
-                                "principal": sesion_ia.get("principal", ""),
-                                "etiqueta_md": e_md,
-                                "rpe_estimado": e_rpe,
-                                "objetivo": e_objetivo
-                            }).eq("id", s_activa['id']).execute()
-                            
-                            from database.db_manager import cargar_datos_sistema
-                            cargar_datos_sistema(force_refresh=True)
-                            st.rerun()
-                            
-                        except json.JSONDecodeError as e_json:
-                            st.error(f"Error: La IA no devolvió un formato válido. Respuesta cruda: {res.text}")
                         except Exception as e:
                             st.error(f"Error detallado de conexión: {str(e)}")
             
