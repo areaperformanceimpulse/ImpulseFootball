@@ -70,7 +70,8 @@ with tab_nueva:
                             "hora_inicio": str(hora_sesion),
                             "tipo": tipo_sesion,
                             "programa": programa_sel,
-                            "asistentes": asistentes,
+                            "convocados": asistentes,  # El registro inmutable
+                            "asistentes": asistentes,  # Por defecto asisten todos
                             "comentarios": ""
                         })
                         
@@ -182,13 +183,14 @@ with tab_historial:
                 st.markdown("#### 👥 Gestión de Asistencias (Faltas)")
                 st.info("💡 Los deportistas marcados constan como asistentes. Para registrar una falta, simplemente **desmarca** al jugador de esta lista.")
                 
-                jugadores_prog = [j['nombre'] for j in jugadores if j.get("programa") == e_prog]
+                # Rescate de datos (soporta retrocompatibilidad con sesiones antiguas que no tenían 'convocados')
+                convocados_sesion = sesion_actual.get('convocados', sesion_actual.get('asistentes', []))
                 asistentes_previos = sesion_actual.get('asistentes', [])
                 
                 e_asistentes = st.multiselect(
                     "Deportistas asistentes reales:",
-                    options=jugadores_prog,
-                    default=[a for a in asistentes_previos if a in jugadores_prog]
+                    options=convocados_sesion,
+                    default=[a for a in asistentes_previos if a in convocados_sesion]
                 )
                 
                 if st.form_submit_button("🔄 Actualizar Sesión", use_container_width=True):
