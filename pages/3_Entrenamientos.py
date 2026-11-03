@@ -54,22 +54,29 @@ with tab_analitica:
             
             for j in jugadores_filtrados:
                 nombre_j = j['nombre']
-                # Contar a cuántas sesiones ha asistido
-                asistencias_j = sum(1 for s in sesiones_filtradas if nombre_j in s.get('asistentes', []))
-                porcentaje = round((asistencias_j / total_sesiones_programa * 100), 1) if total_sesiones_programa > 0 else 0.0
                 
-                datos_tabla_asistencia.append({
-                    "Deportista": nombre_j,
-                    "Programa": j.get('programa'),
-                    "Categoría": j.get('categoria_edad', 'N/D'),
-                    "Sesiones Totales": total_sesiones_programa,
-                    "Asistencias": asistencias_j,
-                    "Faltas": total_sesiones_programa - asistencias_j,
-                    "% Adherencia": f"{porcentaje}%"
-                })
+                # Calcular en cuántas sesiones estuvo convocado
+                sesiones_convocado = sum(1 for s in sesiones_filtradas if nombre_j in s.get('convocados', s.get('asistentes', [])))
+                
+                if sesiones_convocado > 0:
+                    # Calcular a cuántas asistió realmente
+                    asistencias_j = sum(1 for s in sesiones_filtradas if nombre_j in s.get('asistentes', []))
+                    porcentaje = round((asistencias_j / sesiones_convocado * 100), 1)
+                    
+                    datos_tabla_asistencia.append({
+                        "Deportista": nombre_j,
+                        "Programa": j.get('programa'),
+                        "Convocatorias": sesiones_convocado,
+                        "Asistencias": asistencias_j,
+                        "Faltas": sesiones_convocado - asistencias_j,
+                        "% Adherencia": f"{porcentaje}%"
+                    })
                 
             df_asistencias = pd.DataFrame(datos_tabla_asistencia)
-            st.dataframe(df_asistencias, use_container_width=True, hide_index=True)
+            if not df_asistencias.empty:
+                st.dataframe(df_asistencias, use_container_width=True, hide_index=True)
+            else:
+                st.info("Aún no hay convocatorias registradas para los deportistas de este grupo.")
 
 # ==========================================
 # PESTAÑA 2: PLANIFICACIÓN MENSUAL E INTELIGENCIA ARTIFICIAL
