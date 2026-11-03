@@ -182,11 +182,11 @@ with tab_planificacion:
                             }}
                             """
                             
-                            # 4. Llamada con TIMEOUT (15s) y MODO JSON NATIVO
+                            # 4. Llamada con TIMEOUT AMPLIADO (60s) y MODO JSON NATIVO
                             res = model.generate_content(
                                 prompt,
                                 generation_config={"response_mime_type": "application/json"},
-                                request_options={"timeout": 15.0}
+                                request_options={"timeout": 60.0}
                             )
                             
                             # 5. Parseo y guardado directo (el modo JSON nativo garantiza la estructura)
