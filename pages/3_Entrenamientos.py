@@ -206,7 +206,8 @@ with tab_planificacion:
                             
                         except json.JSONDecodeError as e_json:
                             st.error(f"Error: La IA no devolvió un formato válido. Respuesta cruda: {res.text}")
-                        except Exception as e
+                        except Exception as e:
+                            st.error(f"Error detallado de conexión: {str(e)}")
             
             # 3. Estructura de la sesión
             st.markdown("**3. Estructura de Tareas**")
