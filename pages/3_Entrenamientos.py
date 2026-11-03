@@ -3,6 +3,7 @@ from database.db_manager import get_supabase_client, cargar_datos_sistema
 from utils.math_helpers import aplicar_estilos_base
 from datetime import datetime
 import pandas as pd
+from datetime import datetime, date, timedelta
 
 st.set_page_config(page_title="Entrenamientos - ImpulseFootball", page_icon="📋", layout="wide")
 aplicar_estilos_base()
@@ -82,25 +83,131 @@ with tab_analitica:
 # PESTAÑA 2: PLANIFICACIÓN MENSUAL E INTELIGENCIA ARTIFICIAL
 # ==========================================
 with tab_planificacion:
-    st.markdown("### 🧠 Planificador de Contenidos y Motor IA")
-    st.info("Diseña los mesociclos y extrae propuestas de tareas basadas en las últimas métricas condicionales de los deportistas.")
+    st.markdown("### 🧠 Visor de Microciclo y Diseño de Sesiones")
     
-    cp1, cp2 = st.columns([1, 2])
-    with cp1:
-        prog_plan = st.selectbox("Selecciona Programa:", ["Academy", "Elite", "Promise", "OffSeason"], key="prog_plan")
-        jugadores_prog = [j['nombre'] for j in jugadores if j.get('programa') == prog_plan]
-        objetivo_mensual = st.text_area("Objetivos Condicionales del Mesociclo:", height=150, placeholder="Ej: Énfasis en fuerza excéntrica isquiosural y vectores horizontales...")
-        
-        st.markdown("---")
-        st.markdown("#### 🤖 Asistente IA (Generador de Sesiones)")
-        atleta_target = st.selectbox("Analizar y generar para:", ["Grupo Completo"] + jugadores_prog)
-        
-        if st.button("✨ Generar Planificación con IA", type="primary", use_container_width=True):
-            st.warning("Motor IA en preparación. (Requiere inyectar API Key en st.secrets).")
+    # --- GESTIÓN DE ESTADOS (Navegación y Selección) ---
+    if "semana_offset" not in st.session_state: st.session_state.semana_offset = 0
+    if "sesion_activa_id" not in st.session_state: st.session_state.sesion_activa_id = None
+
+    # Cerrar el lienzo de sesión
+    def cerrar_lienzo(): st.session_state.sesion_activa_id = None
+    
+    # --- CÁLCULO DE FECHAS DE LA SEMANA ---
+    hoy = date.today()
+    inicio_semana_actual = hoy - timedelta(days=hoy.weekday()) # Lunes
+    lunes_visor = inicio_semana_actual + timedelta(weeks=st.session_state.semana_offset)
+    domingo_visor = lunes_visor + timedelta(days=6)
+
+    # ==========================================
+    # VISTA 1: LIENZO DE DISEÑO DE SESIÓN (Detalle)
+    # ==========================================
+    if st.session_state.sesion_activa_id:
+        s_activa = next((s for s in sesiones if s['id'] == st.session_state.sesion_activa_id), None)
+        if not s_activa:
+            st.session_state.sesion_activa_id = None
+            st.rerun()
             
-    with cp2:
-        st.markdown("#### 📝 Pizarra de Contenidos (Borrador)")
-        contenido_borrador = st.text_area("Desarrollo de las sesiones (Semanas 1 a 4):", height=400, placeholder="Semana 1:\n- Sesión Campo (Fuerza Específica):\n- Sesión Gimnasio (Potencia):\n\nSemana 2...")
+        st.button("⬅️ Volver a la Vista Semanal", on_click=cerrar_lienzo)
+        st.markdown(f"#### 📝 Diseño de Sesión: {s_activa.get('programa')} ({s_activa.get('fecha')} - {str(s_activa.get('hora_inicio', ''))[:5]})")
         
-        if st.button("💾 Guardar Borrador de Planificación", use_container_width=True):
-            st.success("Borrador guardado temporalmente. (Para persistencia crearemos la tabla 'planificaciones_mensuales' en Supabase).")
+        with st.form("form_diseno_sesion"):
+            # 1. Variables de Sesión
+            st.markdown("**1. Parámetros de Carga y Contexto**")
+            cv1, cv2, cv3 = st.columns([1, 1, 2])
+            with cv1: e_md = st.selectbox("Día de Competición (MD):", ["-", "MD-5", "MD-4", "MD-3", "MD-2", "MD-1", "MD", "MD+1", "MD+2"], index=["-", "MD-5", "MD-4", "MD-3", "MD-2", "MD-1", "MD", "MD+1", "MD+2"].index(s_activa.get('etiqueta_md', '-')))
+            with cv2: e_rpe = st.number_input("RPE Estimado (1-10):", min_value=0, max_value=10, value=int(s_activa.get('rpe_estimado', 0)))
+            with cv3: e_objetivo = st.text_input("Objetivo Principal de la Sesión:", value=s_activa.get('objetivo', ''), placeholder="Ej: Fuerza-Tensión (Cadenas posteriores y frenadas)")
+
+            # Resumen de asistencia
+            conv = s_activa.get('convocados', s_activa.get('asistentes', []))
+            asist = s_activa.get('asistentes', [])
+            faltas = [c for c in conv if c not in asist]
+            txt_asistencia = f"👥 **Convocados:** {len(conv)} | ❌ **Ausencias:** {', '.join(faltas) if faltas else 'Ninguna'}"
+            st.info(txt_asistencia)
+            
+            st.markdown("---")
+            
+            # 2. IA Generator
+            st.markdown("**2. Asistente IA (Diseño Paramétrico a 60')**")
+            c_ia1, c_ia2 = st.columns([3, 1])
+            with c_ia1: st.caption("La IA tomará el **Objetivo Principal**, los **Convocados** y sus **Valoraciones** para estructurar tiempos, series y reps.")
+            with c_ia2:
+                if st.form_submit_button("✨ Autocompletar con IA", type="primary", use_container_width=True):
+                    st.warning("Motor IA preparado para inyección.")
+                    # Aquí irá el prompt a OpenAI/Gemini
+            
+            # 3. Estructura de la sesión
+            st.markdown("**3. Estructura de Tareas**")
+            e_activacion = st.text_area("Fase 1: Activación y Movilidad (10-15')", value=s_activa.get('activacion', ''), height=100)
+            e_core = st.text_area("Fase 2: Core y Estabilidad (10')", value=s_activa.get('core', ''), height=100)
+            e_principal = st.text_area("Fase 3: Parte Principal (Fuerza/Potencia/Campo) (35-40')", value=s_activa.get('principal', ''), height=150)
+            
+            if st.form_submit_button("💾 Guardar Diseño de Sesión", use_container_width=True):
+                try:
+                    datos_diseno = {
+                        "etiqueta_md": e_md, "rpe_estimado": e_rpe, "objetivo": e_objetivo,
+                        "activacion": e_activacion, "core": e_core, "principal": e_principal
+                    }
+                    supabase.table("sesiones_entrenamiento").update(datos_diseno).eq("id", s_activa['id']).execute()
+                    from database.db_manager import cargar_datos_sistema
+                    cargar_datos_sistema(force_refresh=True)
+                    st.success("Diseño guardado correctamente.")
+                    st.session_state.sesion_activa_id = None # Cierra y vuelve al calendario
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error al guardar: {e}")
+
+    # ==========================================
+    # VISTA 2: VISOR SEMANAL (Microciclo)
+    # ==========================================
+    else:
+        cn1, cn2, cn3 = st.columns([1, 3, 1])
+        with cn1: 
+            if st.button("⬅️ Semana Anterior", use_container_width=True): 
+                st.session_state.semana_offset -= 1
+                st.rerun()
+        with cn2: 
+            st.markdown(f"<h4 style='text-align: center; color: #09274e;'>Microciclo: {lunes_visor.strftime('%d %b')} al {domingo_visor.strftime('%d %b %Y')}</h4>", unsafe_allow_html=True)
+        with cn3: 
+            if st.button("Semana Siguiente ➡️", use_container_width=True): 
+                st.session_state.semana_offset += 1
+                st.rerun()
+
+        st.markdown("---")
+        
+        # Generar Grid Semanal
+        dias_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        cols_dias = st.columns(7)
+        
+        df_sesiones = pd.DataFrame(sesiones)
+        if not df_sesiones.empty:
+            df_sesiones['fecha_dt'] = pd.to_datetime(df_sesiones['fecha']).dt.date
+        
+        for i in range(7):
+            fecha_col = lunes_visor + timedelta(days=i)
+            with cols_dias[i]:
+                # Cabecera de día
+                is_today = fecha_col == hoy
+                bg_color = "#10833d" if is_today else "#f8fafc"
+                text_color = "white" if is_today else "#64748b"
+                st.markdown(f"<div style='background-color: {bg_color}; color: {text_color}; text-align: center; padding: 5px; border-radius: 5px; font-weight: 800; font-size: 0.9em; margin-bottom: 10px;'>{dias_nombres[i]}<br>{fecha_col.strftime('%d')}</div>", unsafe_allow_html=True)
+                
+                # Cargar tarjetas de sesión
+                if not df_sesiones.empty:
+                    sesiones_dia = df_sesiones[df_sesiones['fecha_dt'] == fecha_col]
+                    for _, s in sesiones_dia.iterrows():
+                        icono_tipo = "⚽" if s.get('tipo') == "Campo" else "🏋️"
+                        md_tag = s.get('etiqueta_md', '-')
+                        md_badge = f"<span style='background-color: #09274e; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em;'>{md_tag}</span>" if md_tag != '-' else ""
+                        
+                        html_card = f"""
+                        <div style='border: 1px solid #e2e8f0; border-left: 4px solid #10833d; border-radius: 6px; padding: 8px; margin-bottom: 8px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);'>
+                            <div style='font-size: 0.75em; color: #64748b; font-weight: 800;'>{str(s.get('hora_inicio', ''))[:5]} {icono_tipo} {md_badge}</div>
+                            <div style='font-size: 0.9em; font-weight: 700; color: #09274e; margin-top: 4px;'>{s.get('programa')}</div>
+                            <div style='font-size: 0.75em; color: #64748b; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'>{s.get('objetivo', 'Sin objetivo definido')}</div>
+                        </div>
+                        """
+                        st.markdown(html_card, unsafe_allow_html=True)
+                        if st.button("✏️ Diseñar", key=f"btn_diseno_{s['id']}", use_container_width=True):
+                            st.session_state.sesion_activa_id = s['id']
+                            st.rerun()
