@@ -17,10 +17,11 @@ cargar_datos_sistema()
 
 st.title("📋 Control e Historial de Entrenamientos")
 
-tab_historial, tab_faltas, tab_analitica = st.tabs([
-    "🗓️ Historial y Modificación", 
-    "⚠️ Gestión de Faltas", 
-    "📊 Asistencias por Programa y Jugador"
+tab_historial, tab_faltas, tab_analitica, tab_planificacion = st.tabs([
+    "🗓️ Historial", 
+    "⚠️ Faltas", 
+    "📊 Analítica",
+    "🧠 Planificación Inteligente"
 ])
 
 jugadores = st.session_state.get("jugadores", [])
@@ -174,3 +175,30 @@ with tab_analitica:
                 
             df_asistencias = pd.DataFrame(datos_tabla_asistencia)
             st.dataframe(df_asistencias, use_container_width=True, hide_index=True)
+# ==========================================
+# PESTAÑA 4: PLANIFICACIÓN MENSUAL E INTELIGENCIA ARTIFICIAL
+# ==========================================
+with tab_planificacion:
+    st.markdown("### 🧠 Planificador de Contenidos y Motor IA")
+    st.info("Diseña los mesociclos y extrae propuestas de tareas basadas en las últimas métricas condicionales de los deportistas.")
+    
+    cp1, cp2 = st.columns([1, 2])
+    with cp1:
+        prog_plan = st.selectbox("Selecciona Programa:", ["Academy", "Elite", "Promise", "OffSeason"], key="prog_plan")
+        jugadores_prog = [j['nombre'] for j in jugadores if j.get('programa') == prog_plan]
+        objetivo_mensual = st.text_area("Objetivos Condicionales del Mesociclo:", height=150, placeholder="Ej: Énfasis en fuerza excéntrica isquiosural y vectores horizontales...")
+        
+        st.markdown("---")
+        st.markdown("#### 🤖 Asistente IA (Generador de Sesiones)")
+        atleta_target = st.selectbox("Analizar y generar para:", ["Grupo Completo"] + jugadores_prog)
+        
+        if st.button("✨ Generar Planificación con IA", type="primary", use_container_width=True):
+            st.warning("Motor IA en preparación. (Requiere inyectar API Key en st.secrets).")
+            # Aquí irá la lógica de Prompting inyectando el JSON de la última valoración del atleta
+            
+    with cp2:
+        st.markdown("#### 📝 Pizarra de Contenidos (Borrador)")
+        contenido_borrador = st.text_area("Desarrollo de las sesiones (Semanas 1 a 4):", height=400, placeholder="Semana 1:\n- Sesión Campo (Fuerza Específica):\n- Sesión Gimnasio (Potencia):\n\nSemana 2...")
+        
+        if st.button("💾 Guardar Borrador de Planificación", use_container_width=True):
+            st.success("Borrador guardado temporalmente. (Para persistencia crearemos la tabla 'planificaciones_mensuales' en Supabase).")
