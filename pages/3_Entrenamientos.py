@@ -141,84 +141,46 @@ with tab_planificacion:
                         import google.generativeai as genai
                         import json
                         
-                        try:
-                            # 1. Extracción de datos biomecánicos
-                            perfiles_clinicos = []
-                            for nombre in conv:
-                                jug = next((j for j in jugadores if j['nombre'] == nombre), None)
-                                if jug:
-                                    vals = [v for v in st.session_state.get("valoraciones", []) if v['jugador_id'] == jug['id']]
-                                    if vals:
-                                        u_val = sorted(vals, key=lambda x: x['fecha'], reverse=True)[0]
-                                        ctrl_motor = u_val.get('fms_sentadilla', 0) + u_val.get('fms_estabilidad_tronco', 0)
-                                        asi_cmj = abs(float(u_val.get('cmj_uni_der', 0)) - float(u_val.get('cmj_uni_izq', 0)))
-                                        asi_isq = abs(float(u_val.get('iso_flex_rodilla_der', 0)) - float(u_val.get('iso_flex_rodilla_izq', 0)))
-                                        perfiles_clinicos.append(f"- {nombre} | Control FMS (Core/SQ): {ctrl_motor}/6 | Asimetría CMJ: {asi_cmj}cm | Asimetría Isquios: {asi_isq}N")
-                            
-                            contexto_jugadores = "\n".join(perfiles_clinicos) if perfiles_clinicos else "Sin valoraciones registradas para estos deportistas."
+                        # 2. Generador de Prompts (IA Externa)
+            st.markdown("**2. Motor de Prompting de Élite (Copiar y Pegar en IA)**")
+            st.caption("💡 Define los parámetros de carga arriba y pulsa 'Guardar Diseño' para que este texto se actualice. Cópialo a tu IA para diseñar e iterar la sesión al instante.")
+            
+            # 2.1 Extracción de perfiles clínicos (Filtramos solo a los que tienen déficits para no saturar a la IA)
+            perfiles_clinicos = []
+            for nombre in conv:
+                jug = next((j for j in jugadores if j['nombre'] == nombre), None)
+                if jug:
+                    vals = [v for v in st.session_state.get("valoraciones", []) if v['jugador_id'] == jug['id']]
+                    if vals:
+                        u_val = sorted(vals, key=lambda x: x['fecha'], reverse=True)[0]
+                        ctrl_motor = u_val.get('fms_sentadilla', 0) + u_val.get('fms_estabilidad_tronco', 0)
+                        asi_cmj = abs(float(u_val.get('cmj_uni_der', 0)) - float(u_val.get('cmj_uni_izq', 0)))
+                        asi_isq = abs(float(u_val.get('iso_flex_rodilla_der', 0)) - float(u_val.get('iso_flex_rodilla_izq', 0)))
+                        
+                        # Solo enviamos a la IA a los jugadores que requieren compensación urgente
+                        if asi_cmj > 10 or asi_isq > 15 or ctrl_motor < 4:
+                            perfiles_clinicos.append(f"- {nombre} | Control FMS (Core/SQ): {ctrl_motor}/6 | Asimetría CMJ: {asi_cmj}cm | Asimetría Isq: {asi_isq}N")
+            
+            contexto_jugadores = "\n".join(perfiles_clinicos) if perfiles_clinicos else "Grupo estable. Sin asimetrías lesionales críticas registradas en la última valoración."
+            
+            # 2.2 Generación del Prompt Estructural
+            prompt_ia = f"""Actúa como Preparador Físico de Élite en fútbol. Diseña una sesión de 60' bajo la metodología del Microciclo Estructurado.
 
-                            # 2. Configuración Ágil de la API (Sin forzar JSON)
-                            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                            model = genai.GenerativeModel('models/gemini-3.8-flash')
-                            
-                            # 3. Prompting con Anclas Estructurales
-                            prompt = f"""
-                            Actúa como un Preparador Físico de Élite especializado en fútbol profesional y Microciclo Estructurado.
-                            Diseña una sesión de 60 minutos basada en:
-                            
-                            - Contexto: {e_md}
-                            - RPE Objetivo: {e_rpe}/10
-                            - Objetivo: {e_objetivo}
-                            - Perfiles Biomecánicos (Focaliza las tareas en compensar estos déficits):
-                            {contexto_jugadores}
+CONTEXTO DE LA SESIÓN:
+- Día: {s_activa.get('etiqueta_md', e_md)}
+- RPE Objetivo: {s_activa.get('rpe_estimado', e_rpe)}/10
+- Objetivo Principal: {s_activa.get('objetivo', e_objetivo)}
 
-                            Diseña la sesión detallando ejercicios, series, repeticiones y tiempos. 
-                            ES OBLIGATORIO que dividas el texto utilizando EXACTAMENTE estas tres etiquetas como títulos de cada bloque. No uses formato JSON, solo texto plano estructurado así:
+PERFILES CLÍNICOS A COMPENSAR (Convocados con déficits en test):
+{contexto_jugadores}
 
-                            [ACTIVACION]
-                            (Escribe aquí el desarrollo de la activación de 10-15')
-
-                            [CORE]
-                            (Escribe aquí el trabajo de estabilidad de 10')
-
-                            [PRINCIPAL]
-                            (Escribe aquí la fase principal de fuerza/campo de 35-40')
-                            """
-                            
-                            # 4. Llamada estándar con Timeout ampliado (90 segundos)
-                            res = model.generate_content(prompt, request_options={"timeout": 90.0})
-                            texto_ia = res.text
-                            
-                            # 5. Parseo Quirúrgico por fragmentación
-                            def extraer_bloque(texto, inicio, fin=None):
-                                if inicio not in texto: return ""
-                                parte = texto.split(inicio)[1]
-                                return parte.split(fin)[0].strip() if fin else parte.strip()
-
-                            val_activacion = extraer_bloque(texto_ia, "[ACTIVACION]", "[CORE]")
-                            val_core = extraer_bloque(texto_ia, "[CORE]", "[PRINCIPAL]")
-                            val_principal = extraer_bloque(texto_ia, "[PRINCIPAL]")
-                            
-                            # Fallback de seguridad absoluta: Si la IA omite las anclas, vuelca la sesión completa en el bloque principal
-                            if not val_activacion and not val_principal:
-                                val_principal = texto_ia
-                            
-                            # 6. Guardado en Base de Datos
-                            supabase.table("sesiones_entrenamiento").update({
-                                "activacion": val_activacion,
-                                "core": val_core,
-                                "principal": val_principal,
-                                "etiqueta_md": e_md,
-                                "rpe_estimado": e_rpe,
-                                "objetivo": e_objetivo
-                            }).eq("id", s_activa['id']).execute()
-                            
-                            from database.db_manager import cargar_datos_sistema
-                            cargar_datos_sistema(force_refresh=True)
-                            st.rerun()
-                            
-                        except Exception as e:
-                            st.error(f"Error al generar la sesión: {str(e)}")
+ESTRUCTURA REQUERIDA (Devuelve el desarrollo detallando ejercicios, tiempos, series y reps):
+1. Activación y Movilidad (10-15'): Enfocado en preparar las estructuras.
+2. Core y Estabilidad (10'): Compensación de los déficits marcados.
+3. Parte Principal (35-40'): Tareas de fuerza, potencia o transferencia con balón acordes al MD y RPE.
+"""
+            
+            st.code(prompt_ia, language="markdown")
             
             # 3. Estructura de la sesión
             st.markdown("**3. Estructura de Tareas**")
