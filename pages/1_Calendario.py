@@ -3,6 +3,8 @@ from database.db_manager import get_supabase_client, cargar_datos_sistema
 from utils.math_helpers import aplicar_estilos_base
 from datetime import date, datetime
 import pandas as pd
+from datetime import date, datetime, timedelta
+import calendar
 
 st.set_page_config(page_title="Calendario", page_icon="📅", layout="wide")
 aplicar_estilos_base()
@@ -27,48 +29,55 @@ sesiones = st.session_state.get("sesiones", [])
 # PESTAÑA 1: PROGRAMAR NUEVA SESIÓN
 # ==========================================
 with tab_nueva:
-    st.markdown("### 📝 Configurar Sesión Semanal")
+    st.markdown("### 📝 Configurar Sesión")
     
     if not jugadores:
         st.warning("No hay deportistas registrados en el sistema.")
     else:
-        c1, c2 = st.columns(2)
+        c1, c2, c3, c4 = st.columns(4)
         
-        with c1:
-            fecha_sesion = st.date_input("Fecha del Entrenamiento:", value=date.today())
-            hora_sesion = st.time_input("Hora de Inicio:", value=datetime.strptime("17:00", "%H:%M").time())
-            tipo_sesion = st.selectbox("Tipo de Sesión:", options=["Campo", "Gimnasio"])
-            
-        with c2:
-            programa_sel = st.selectbox("Programa de Entrenamiento:", options=["Academy", "Elite", "Promise", "OffSeason"])
-            jugadores_filtrados = [j for j in jugadores if j.get("programa") == programa_sel]
-            nombres_filtrados = [j["nombre"] for j in jugadores_filtrados]
+        with c1: fecha_sesion = st.date_input("Fecha:", value=date.today())
+        with c2: hora_sesion = st.time_input("Hora:", value=datetime.strptime("17:00", "%H:%M").time())
+        with c3: tipo_sesion = st.selectbox("Tipo:", options=["Campo", "Gimnasio"])
+        with c4: programa_sel = st.selectbox("Programa:", options=["Academy", "Elite", "Promise", "OffSeason"])
+        
+        jugadores_filtrados = [j for j in jugadores if j.get("programa") == programa_sel]
+        nombres_filtrados = [j["nombre"] for j in jugadores_filtrados]
 
         st.markdown("---")
         asistentes = st.multiselect(
             f"Deportistas Convocados ({len(nombres_filtrados)} disponibles en {programa_sel}):", 
             options=nombres_filtrados,
-            default=nombres_filtrados
+            default=[] # Se inicia en blanco obligatoriamente
         )
+        
+        repetir_semanal = st.checkbox("🔄 Hacer esta sesión recurrente (Repetir semanalmente durante 4 semanas)")
         
         st.markdown("")
         if st.button("💾 Guardar Sesión", use_container_width=True):
             if not asistentes:
-                st.error("Debes seleccionar al menos un deportista para la sesión.")
+                st.error("Debes convocar al menos un deportista para la sesión.")
             else:
                 try:
-                    nueva_sesion = {
-                        "usuario_id": st.session_state.get("usuario_id"), # VINCULACIÓN DE SEGURIDAD
-                        "fecha": str(fecha_sesion),
-                        "hora_inicio": str(hora_sesion),
-                        "tipo": tipo_sesion,
-                        "programa": programa_sel,
-                        "asistentes": asistentes,
-                        "comentarios": ""
-                    }
-                    supabase.table("sesiones_entrenamiento").insert(nueva_sesion).execute()
+                    sesiones_a_guardar = []
+                    semanas = 4 if repetir_semanal else 1
+                    
+                    for i in range(semanas):
+                        fecha_iter = fecha_sesion + timedelta(days=7*i)
+                        sesiones_a_guardar.append({
+                            "usuario_id": st.session_state.get("usuario_id"),
+                            "fecha": str(fecha_iter),
+                            "hora_inicio": str(hora_sesion),
+                            "tipo": tipo_sesion,
+                            "programa": programa_sel,
+                            "asistentes": asistentes,
+                            "comentarios": ""
+                        })
+                        
+                    supabase.table("sesiones_entrenamiento").insert(sesiones_a_guardar).execute()
                     cargar_datos_sistema(force_refresh=True)
-                    st.success(f"¡Sesión de {tipo_sesion} programada correctamente para el {fecha_sesion}!")
+                    msg = "¡Sesión programada!" if not repetir_semanal else "¡Sesiones recurrentes (4 semanas) programadas!"
+                    st.success(f"{msg} Correctamente.")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error al guardar la sesión: {e}")
@@ -82,34 +91,47 @@ with tab_calendario:
     if not sesiones:
         st.info("Aún no hay sesiones registradas.")
     else:
-        import calendar
-        hoy = date.today()
-        
-        c_mes1, c_mes2, c_mes3 = st.columns([1, 2, 1])
-        with c_mes2:
-            mes_sel = st.selectbox("Mes:", range(1, 13), index=hoy.month - 1, format_func=lambda x: calendar.month_name[x].capitalize())
-            año_sel = st.selectbox("Año:", range(hoy.year - 1, hoy.year + 2), index=1)
+        # Inicializar estado del calendario si no existe
+        if "cal_fecha" not in st.session_state:
+            st.session_state.cal_fecha = date.today().replace(day=1)
             
+        c_nav1, c_nav2, c_nav3 = st.columns([1, 4, 1])
+        with c_nav1:
+            if st.button("⬅️ Mes Anterior", use_container_width=True):
+                mes_ant = st.session_state.cal_fecha.month - 1
+                año_ant = st.session_state.cal_fecha.year
+                if mes_ant == 0: mes_ant, año_ant = 12, año_ant - 1
+                st.session_state.cal_fecha = date(año_ant, mes_ant, 1)
+                st.rerun()
+        with c_nav2:
+            mes_str = calendar.month_name[st.session_state.cal_fecha.month].capitalize()
+            st.markdown(f"<h4 style='text-align: center; margin-top: 0; color: #09274e;'>{mes_str} {st.session_state.cal_fecha.year}</h4>", unsafe_allow_html=True)
+        with c_nav3:
+            if st.button("Mes Siguiente ➡️", use_container_width=True):
+                mes_sig = st.session_state.cal_fecha.month + 1
+                año_sig = st.session_state.cal_fecha.year
+                if mes_sig == 13: mes_sig, año_sig = 1, año_sig + 1
+                st.session_state.cal_fecha = date(año_sig, mes_sig, 1)
+                st.rerun()
+                
         df_sesiones = pd.DataFrame(sesiones)
-        df_sesiones['fecha'] = pd.to_datetime(df_sesiones['fecha'])
-        df_mes = df_sesiones[(df_sesiones['fecha'].dt.month == mes_sel) & (df_sesiones['fecha'].dt.year == año_sel)]
+        df_sesiones['fecha_dt'] = pd.to_datetime(df_sesiones['fecha'])
+        df_mes = df_sesiones[(df_sesiones['fecha_dt'].dt.month == st.session_state.cal_fecha.month) & (df_sesiones['fecha_dt'].dt.year == st.session_state.cal_fecha.year)]
         
         st.markdown("---")
-        cal = calendar.monthcalendar(año_sel, mes_sel)
+        cal = calendar.monthcalendar(st.session_state.cal_fecha.year, st.session_state.cal_fecha.month)
         dias_semana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
         
-        # Cabecera días
         cols_dias = st.columns(7)
         for i, dia in enumerate(dias_semana):
             cols_dias[i].markdown(f"<div style='text-align: center; font-weight: 800; color: #64748b;'>{dia}</div>", unsafe_allow_html=True)
             
-        # Generación de la cuadrícula
         for semana in cal:
             cols = st.columns(7)
             for i, dia in enumerate(semana):
                 with cols[i]:
                     if dia != 0:
-                        sesiones_dia = df_mes[df_mes['fecha'].dt.day == dia]
+                        sesiones_dia = df_mes[df_mes['fecha_dt'].dt.day == dia]
                         fondo = "#f8fafc" if sesiones_dia.empty else "#eef2ff"
                         borde = "#e2e8f0" if sesiones_dia.empty else "#10833d"
                         
@@ -133,29 +155,33 @@ with tab_historial:
     if not sesiones:
         st.info("No hay sesiones para modificar.")
     else:
-        # Seleccionar sesión a editar
-        opciones_sesiones = {s['id']: f"{s.get('fecha')} - {s.get('tipo')} ({s.get('programa')})" for s in sesiones}
-        sesion_editar_id = st.selectbox("Selecciona la sesión a modificar:", options=list(opciones_sesiones.keys()), format_func=lambda x: opciones_sesiones[x])
+        def format_titulo(s):
+            asist = s.get('asistentes', [])
+            if s.get('tipo') == 'Campo' and len(asist) >= 5:
+                titulo = f"Campo: {s.get('programa')}"
+            else:
+                nombres = ", ".join(asist) if asist else "Sin convocados"
+                if len(nombres) > 40: nombres = nombres[:37] + "..."
+                titulo = f"Gimnasio: {nombres}" if s.get('tipo') == 'Gimnasio' else f"Campo: {nombres}"
+            return f"{s.get('fecha')} | {titulo} ({str(s.get('hora_inicio', ''))[:5]})"
+
+        opciones_sesiones = {s['id']: format_titulo(s) for s in sesiones}
+        sesion_editar_id = st.selectbox("Selecciona la sesión a gestionar:", options=list(opciones_sesiones.keys()), format_func=lambda x: opciones_sesiones[x])
         
         sesion_actual = next((s for s in sesiones if s['id'] == sesion_editar_id), None)
         
         if sesion_actual:
             with st.form("form_editar_sesion"):
-                ec1, ec2, ec3 = st.columns(3)
-                with ec1:
-                    e_fecha = st.date_input("Fecha:", value=datetime.strptime(sesion_actual['fecha'], "%Y-%m-%d").date())
-                    e_tipo = st.selectbox("Tipo:", options=["Campo", "Gimnasio"], index=0 if sesion_actual.get('tipo') == "Campo" else 1)
-                with ec2:
-                    hora_val = datetime.strptime(str(sesion_actual.get('hora_inicio', '17:00'))[:5], "%H:%M").time()
-                    e_hora = st.time_input("Hora de Inicio:", value=hora_val)
-                with ec3:
-                    e_prog = st.selectbox("Programa:", options=["Academy", "Elite", "Promise", "OffSeason"], index=["Academy", "Elite", "Promise", "OffSeason"].index(sesion_actual.get('programa')) if sesion_actual.get('programa') in ["Academy", "Elite", "Promise", "OffSeason"] else 0)
-                               
-                st.markdown("---")
-                st.markdown("#### 👥 Gestión de Asistencias y Faltas")
-                st.info("💡 Desmarca de la lista a los jugadores que finalmente **faltaron** a la sesión a pesar de estar convocados.")
+                ec1, ec2, ec3, ec4 = st.columns(4)
+                with ec1: e_fecha = st.date_input("Fecha:", value=datetime.strptime(sesion_actual['fecha'], "%Y-%m-%d").date())
+                with ec2: e_hora = st.time_input("Hora:", value=datetime.strptime(str(sesion_actual.get('hora_inicio', '17:00'))[:5], "%H:%M").time())
+                with ec3: e_tipo = st.selectbox("Tipo:", options=["Campo", "Gimnasio"], index=0 if sesion_actual.get('tipo') == "Campo" else 1)
+                with ec4: e_prog = st.selectbox("Programa:", options=["Academy", "Elite", "Promise", "OffSeason"], index=["Academy", "Elite", "Promise", "OffSeason"].index(sesion_actual.get('programa')) if sesion_actual.get('programa') in ["Academy", "Elite", "Promise", "OffSeason"] else 0)
                 
-                # Lista de jugadores totales del programa de esta sesión
+                st.markdown("---")
+                st.markdown("#### 👥 Gestión de Asistencias (Faltas)")
+                st.info("💡 Los deportistas marcados constan como asistentes. Para registrar una falta, simplemente **desmarca** al jugador de esta lista.")
+                
                 jugadores_prog = [j['nombre'] for j in jugadores if j.get("programa") == e_prog]
                 asistentes_previos = sesion_actual.get('asistentes', [])
                 
@@ -165,7 +191,7 @@ with tab_historial:
                     default=[a for a in asistentes_previos if a in jugadores_prog]
                 )
                 
-                if st.form_submit_button("🔄 Actualizar Datos de Sesión", use_container_width=True):
+                if st.form_submit_button("🔄 Actualizar Sesión", use_container_width=True):
                     try:
                         datos_actualizados = {
                             "fecha": str(e_fecha),
@@ -173,11 +199,21 @@ with tab_historial:
                             "tipo": e_tipo,
                             "programa": e_prog,
                             "asistentes": e_asistentes,
-                            "comentarios": "" # Lo mantenemos vacío en BD para no romper esquemas antiguos
+                            "comentarios": ""
                         }
                         supabase.table("sesiones_entrenamiento").update(datos_actualizados).eq("id", sesion_editar_id).execute()
                         cargar_datos_sistema(force_refresh=True)
-                        st.success("¡Sesión actualizada correctamente con la gestión de asistencias!")
+                        st.success("¡Sesión actualizada correctamente!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error al actualizar la sesión: {e}")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🗑️ Eliminar Sesión Definitivamente", type="primary", use_container_width=True):
+                try:
+                    supabase.table("sesiones_entrenamiento").delete().eq("id", sesion_editar_id).execute()
+                    cargar_datos_sistema(force_refresh=True)
+                    st.success("¡Sesión eliminada!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error: {e}")
