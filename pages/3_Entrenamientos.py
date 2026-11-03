@@ -128,13 +128,82 @@ with tab_planificacion:
             st.markdown("---")
             
             # 2. IA Generator
-            st.markdown("**2. Asistente IA (Diseño Paramétrico a 60')**")
-            c_ia1, c_ia2 = st.columns([3, 1])
-            with c_ia1: st.caption("La IA tomará el **Objetivo Principal**, los **Convocados** y sus **Valoraciones** para estructurar tiempos, series y reps.")
-            with c_ia2:
-                if st.form_submit_button("✨ Autocompletar con IA", type="primary", use_container_width=True):
-                    st.warning("Motor IA preparado para inyección.")
-                    # Aquí irá el prompt a OpenAI/Gemini
+            st.markdown("**2. Asistente IA (Motor de Generación a 60')**")
+            st.caption("🤖 Escanea el perfil biomecánico de los convocados y diseña tareas para compensar sus déficits y cumplir el objetivo.")
+            
+            btn_ia = st.form_submit_button("✨ Diseñar Sesión con Inteligencia Artificial", type="secondary", use_container_width=True)
+            
+            if btn_ia:
+                if not e_objetivo:
+                    st.error("⚠️ Define primero el 'Objetivo Principal de la Sesión' para dar contexto a la IA.")
+                else:
+                    with st.spinner("🧠 Analizando datos condicionales y estructurando tareas..."):
+                        import google.generativeai as genai
+                        import json
+                        
+                        try:
+                            # 1. Extracción y compactación de datos biomecánicos
+                            perfiles_clinicos = []
+                            for nombre in conv:
+                                jug = next((j for j in jugadores if j['nombre'] == nombre), None)
+                                if jug:
+                                    vals = [v for v in st.session_state.get("valoraciones", []) if v['jugador_id'] == jug['id']]
+                                    if vals:
+                                        # Obtener la valoración más reciente
+                                        u_val = sorted(vals, key=lambda x: x['fecha'], reverse=True)[0]
+                                        
+                                        # KPIs Críticos
+                                        ctrl_motor = u_val.get('fms_sentadilla', 0) + u_val.get('fms_estabilidad_tronco', 0)
+                                        asi_cmj = abs(float(u_val.get('cmj_uni_der', 0)) - float(u_val.get('cmj_uni_izq', 0)))
+                                        asi_isq = abs(float(u_val.get('iso_flex_rodilla_der', 0)) - float(u_val.get('iso_flex_rodilla_izq', 0)))
+                                        
+                                        perfiles_clinicos.append(f"- {nombre} | Control FMS (Core/Sentadilla): {ctrl_motor}/6 | Asimetría CMJ: {asi_cmj}cm | Asimetría Isquios: {asi_isq}N")
+                            
+                            contexto_jugadores = "\n".join(perfiles_clinicos) if perfiles_clinicos else "No existen valoraciones previas registradas para estos deportistas."
+
+                            # 2. Configuración del Motor Gemini
+                            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+                            model = genai.GenerativeModel('gemini-1.5-flash')
+                            
+                            # 3. Prompting de Élite (Ingeniería de contexto)
+                            prompt = f"""
+                            Actúa como un Preparador Físico de Élite especializado en fútbol profesional y Microciclo Estructurado.
+                            Diseña una sesión de 60 minutos con máximo rigor científico basada en estos parámetros:
+                            
+                            - Contexto del Microciclo: {e_md}
+                            - RPE Objetivo de la sesión: {e_rpe}/10
+                            - Objetivo Fisiológico y Táctico: {e_objetivo}
+                            - Perfiles Biomecánicos de la plantilla convocada (Focaliza las tareas preventivas y de fuerza en compensar estos déficits):
+                            {contexto_jugadores}
+
+                            Devuelve ÚNICA Y EXCLUSIVAMENTE un objeto JSON válido con esta estructura exacta. Cero texto fuera del JSON, cero bloques markdown:
+                            {{
+                                "activacion": "Pautas detalladas (10-15'). Ejercicios, series, repeticiones.",
+                                "core": "Trabajo de estabilidad (10'). Ejercicios, series, tiempos de tensión.",
+                                "principal": "Bloque principal (35-40'). Series, repeticiones, %RM o VBT, descansos y densidad de la tarea."
+                            }}
+                            """
+                            
+                            res = model.generate_content(prompt)
+                            texto_limpio = res.text.strip().replace("```json", "").replace("```", "")
+                            sesion_ia = json.loads(texto_limpio)
+                            
+                            # 4. Inserción directa en Base de Datos para persistencia visual
+                            supabase.table("sesiones_entrenamiento").update({
+                                "activacion": sesion_ia.get("activacion", ""),
+                                "core": sesion_ia.get("core", ""),
+                                "principal": sesion_ia.get("principal", ""),
+                                "etiqueta_md": e_md,
+                                "rpe_estimado": e_rpe,
+                                "objetivo": e_objetivo
+                            }).eq("id", s_activa['id']).execute()
+                            
+                            from database.db_manager import cargar_datos_sistema
+                            cargar_datos_sistema(force_refresh=True)
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"Error de conexión con el motor IA o parseo JSON: {e}")
             
             # 3. Estructura de la sesión
             st.markdown("**3. Estructura de Tareas**")
