@@ -157,13 +157,11 @@ with tab_planificacion:
                             
                             contexto_jugadores = "\n".join(perfiles_clinicos) if perfiles_clinicos else "Sin valoraciones registradas para estos deportistas."
 
-                            # 2. Configuración Estricta de la API
+                            # 2. Configuración Ágil de la API (Sin forzar JSON)
                             genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-                            
-                            # Ruta absoluta obligatoria
                             model = genai.GenerativeModel('models/gemini-3.8-flash')
                             
-                            # 3. Prompting de Élite
+                            # 3. Prompting con Anclas Estructurales
                             prompt = f"""
                             Actúa como un Preparador Físico de Élite especializado en fútbol profesional y Microciclo Estructurado.
                             Diseña una sesión de 60 minutos basada en:
@@ -174,28 +172,42 @@ with tab_planificacion:
                             - Perfiles Biomecánicos (Focaliza las tareas en compensar estos déficits):
                             {contexto_jugadores}
 
-                            ESTRUCTURA EXACTA DEL JSON REQUERIDO:
-                            {{
-                                "activacion": "Pautas (10-15'). Ejercicios, series, repeticiones.",
-                                "core": "Estabilidad (10'). Ejercicios, series, tiempos de tensión.",
-                                "principal": "Fase principal (35-40'). Series, repeticiones, %RM o VBT, descansos."
-                            }}
+                            Diseña la sesión detallando ejercicios, series, repeticiones y tiempos. 
+                            ES OBLIGATORIO que dividas el texto utilizando EXACTAMENTE estas tres etiquetas como títulos de cada bloque. No uses formato JSON, solo texto plano estructurado así:
+
+                            [ACTIVACION]
+                            (Escribe aquí el desarrollo de la activación de 10-15')
+
+                            [CORE]
+                            (Escribe aquí el trabajo de estabilidad de 10')
+
+                            [PRINCIPAL]
+                            (Escribe aquí la fase principal de fuerza/campo de 35-40')
                             """
                             
-                            # 4. Llamada con TIMEOUT AMPLIADO (60s) y MODO JSON NATIVO
-                            res = model.generate_content(
-                                prompt,
-                                generation_config={"response_mime_type": "application/json"},
-                                request_options={"timeout": 60.0}
-                            )
+                            # 4. Llamada estándar con Timeout de seguridad
+                            res = model.generate_content(prompt, request_options={"timeout": 20.0})
+                            texto_ia = res.text
                             
-                            # 5. Parseo y guardado directo (el modo JSON nativo garantiza la estructura)
-                            sesion_ia = json.loads(res.text)
+                            # 5. Parseo Quirúrgico por fragmentación
+                            def extraer_bloque(texto, inicio, fin=None):
+                                if inicio not in texto: return ""
+                                parte = texto.split(inicio)[1]
+                                return parte.split(fin)[0].strip() if fin else parte.strip()
+
+                            val_activacion = extraer_bloque(texto_ia, "[ACTIVACION]", "[CORE]")
+                            val_core = extraer_bloque(texto_ia, "[CORE]", "[PRINCIPAL]")
+                            val_principal = extraer_bloque(texto_ia, "[PRINCIPAL]")
                             
+                            # Fallback de seguridad absoluta: Si la IA omite las anclas, vuelca la sesión completa en el bloque principal
+                            if not val_activacion and not val_principal:
+                                val_principal = texto_ia
+                            
+                            # 6. Guardado en Base de Datos
                             supabase.table("sesiones_entrenamiento").update({
-                                "activacion": sesion_ia.get("activacion", ""),
-                                "core": sesion_ia.get("core", ""),
-                                "principal": sesion_ia.get("principal", ""),
+                                "activacion": val_activacion,
+                                "core": val_core,
+                                "principal": val_principal,
                                 "etiqueta_md": e_md,
                                 "rpe_estimado": e_rpe,
                                 "objetivo": e_objetivo
@@ -206,7 +218,7 @@ with tab_planificacion:
                             st.rerun()
                             
                         except Exception as e:
-                            st.error(f"Error técnico o Timeout al generar la sesión: {str(e)}")
+                            st.error(f"Error al generar la sesión: {str(e)}")
             
             # 3. Estructura de la sesión
             st.markdown("**3. Estructura de Tareas**")
