@@ -42,20 +42,21 @@ def fetch_datos_academia():
     )
 
 def cargar_datos_sistema(force_refresh=False):
-    """Carga los datos en st.session_state utilizando la caché."""
-    if force_refresh:
-        fetch_datos_academia.clear()
+    client = get_supabase_client()
+    usuario_id = st.session_state.get("usuario_id")
+    
+    if not usuario_id:
+        return
         
     try:
-        jugadores, valoraciones, sesiones = fetch_datos_academia()
+        # Filtramos por usuario_id para que cada uno vea solo lo suyo
+        res_jug = client.table("jugadores").select("*").execute()
+        res_val = client.table("valoraciones_condicionales").select("*").execute()
+        res_sesiones = client.table("sesiones_entrenamiento").select("*").eq("usuario_id", usuario_id).execute()
         
-        st.session_state.jugadores = jugadores
-        st.session_state.valoraciones = valoraciones
-        st.session_state.sesiones = sesiones
-        
+        st.session_state.jugadores = res_jug.data if res_jug.data else []
+        st.session_state.valoraciones = res_val.data if res_val.data else []
+        st.session_state.sesiones = res_sesiones.data if res_sesiones.data else []
         st.session_state.datos_cargados = True
     except Exception as e:
-        st.error(f"Error al cargar los datos del sistema: {e}")
-        st.session_state.jugadores = []
-        st.session_state.valoraciones = []
-        st.session_state.sesiones = []
+        st.error(f"Error BD: {e}")
